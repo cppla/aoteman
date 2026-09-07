@@ -107,6 +107,25 @@ pet.example.com {
 
 使用其他反向代理时，同样将网页与 `/api/` 一起转发，关闭 `/api/` 的 CDN / 代理缓存。更换域名不会移动服务器数据库；在新域名输入原恢复码即可接回原存档。HTTPS 可保护恢复码在传输中的安全。
 
+## 默认服务器与更新约定
+
+本项目后续更新默认完成 **提交并推送 Git → Docker 更新服务器**，具体协作约定见 [AGENTS.md](AGENTS.md)。
+
+- 服务器：`alisg.cloudcpp.com`，SSH 端口 `24`，项目目录 `/opt/aoteman`。
+- 试玩入口：`http://alisg.cloudcpp.com:8787`。
+- Compose 项目：`aoteman`；成长数据库卷：`aoteman_data`。
+
+代码推送后，在服务器上更新：
+
+```sh
+cd /opt/aoteman
+git pull --ff-only origin main
+./deploy.sh
+docker compose ps
+```
+
+首次部署已迁移本地试玩快照。新网址与 `localhost` 使用不同的浏览器网站数据：在原本地页面的存档设置中保存恢复码，到服务器页面使用同一恢复码，即可接回原来的伙伴。后续服务器与本地属于两个独立数据库，继续在服务器网址游玩；更新服务器时不再重新导入本地快照。
+
 ## 更新版本，保留成长进度
 
 ```sh
