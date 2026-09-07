@@ -1,0 +1,158 @@
+/* Sculpted toy-like SVGs; each animated limb retains its own shoulder pivot. */
+.actor .character-art { display: block; width: 100%; height: 100%; overflow: visible; user-select: none; }
+.character-art * { transform-box: fill-box; }
+.hero-rig, .monster-rig { transform-origin: 50% 100%; will-change: transform; }
+.hero-rig { animation: hero-breathe 3.8s ease-in-out infinite; }
+.hero-head { transform-origin: 50% 93%; }
+.hero-left-arm { transform-box: view-box; transform-origin: 135px 207px; }
+.hero-right-arm { transform-box: view-box; transform-origin: 225px 207px; }
+.hero-left-leg { transform-box: view-box; transform-origin: 155px 290px; }
+.hero-right-leg { transform-box: view-box; transform-origin: 205px 290px; }
+.hero-eyes { transform-origin: center; animation: eye-blink 6.5s infinite; }
+.hero-left-arm { animation: hero-arm-idle 3.8s ease-in-out infinite; }
+.hero-right-arm { animation: hero-arm-idle 3.8s ease-in-out infinite reverse; }
+.hero-crystal .crystal-halo { animation: crystal-pulse 2.2s ease-in-out infinite; }
+.actor-shadow { transform-origin: center; animation: shadow-breathe 3.8s ease-in-out infinite; }
+.hero-defense-arms, .hero-beam-arms, .hero-shield, .hero-power-aura, .hero-sleep-symbols, .hero-heart, .monster-slash, .monster-stun, .monster-aura { opacity: 0; pointer-events: none; }
+.hero-defense-arms, .hero-beam-arms { visibility: hidden; }
+.hero-power-aura, .hero-shield, .monster-aura { transform-origin: center; }
+.hero-beam-flare { transform-origin: center; }
+
+.hero-actor[data-pose="wave"] .hero-right-arm { animation: hero-wave 1.2s ease-in-out infinite; }
+.hero-actor[data-pose="wave"] .hero-head { animation: hero-head-tilt 1.2s ease-in-out; }
+.hero-actor[data-pose="eat"] .hero-left-arm { animation: hero-eat-arm 1.4s ease-in-out infinite; }
+.hero-actor[data-pose="eat"] .hero-head { animation: hero-nod .7s ease-in-out infinite; }
+.hero-actor[data-pose="eat"] .hero-heart { animation: heart-rise 1.4s ease-out infinite; }
+.hero-actor[data-pose="train"] .hero-rig { animation: hero-training 1.15s ease-in-out infinite; }
+.hero-actor[data-pose="train"] .hero-left-arm { animation: hero-train-left 1.15s ease-in-out infinite; }
+.hero-actor[data-pose="train"] .hero-right-arm { animation: hero-train-right 1.15s ease-in-out infinite; }
+.hero-actor[data-pose="train"] .hero-left-leg { animation: hero-train-leg 1.15s ease-in-out infinite; }
+.hero-actor[data-pose="train"] .hero-right-leg { animation: hero-train-leg 1.15s ease-in-out infinite reverse; }
+.hero-actor[data-pose="sleep"] .hero-rig { animation: hero-sleep 4s ease-in-out infinite; }
+.hero-actor[data-pose="sleep"] .hero-head { transform: rotate(9deg) translateY(7px); }
+.hero-actor[data-pose="sleep"] .hero-eyes { animation: none; transform: scaleY(.11); opacity: .65; }
+.hero-actor[data-pose="sleep"] .hero-crystal { opacity: .45; }
+.hero-actor[data-pose="sleep"] .hero-sleep-symbols { animation: sleep-float 3s ease-in-out infinite; }
+.hero-actor[data-pose="sleep"] .hero-left-arm, .hero-actor[data-pose="sleep"] .hero-right-arm { animation: none; }
+.hero-actor[data-pose="transform"] .hero-rig { animation: hero-transform 1.65s cubic-bezier(.2,.7,.2,1) both; }
+.hero-actor[data-pose="transform"] .hero-power-aura { animation: hero-transform-aura 1.65s ease-out both; }
+.hero-actor[data-pose="transform"] .hero-left-arm { animation: hero-transform-left 1.65s ease-in-out both; }
+.hero-actor[data-pose="transform"] .hero-right-arm { animation: hero-transform-right 1.65s ease-in-out both; }
+.hero-actor[data-pose="punch"] .hero-rig { animation: hero-punch-body .65s ease-in-out both; }
+.hero-actor[data-pose="punch"] .hero-right-arm { animation: hero-punch-arm .65s ease-in-out both; }
+.hero-actor[data-pose="punch"] .hero-left-arm { animation: hero-punch-guard .65s ease-in-out both; }
+.hero-actor[data-pose="beam"] .hero-neutral-arms, .hero-actor[data-pose="defend"] .hero-neutral-arms { opacity: 0; visibility: hidden; }
+.hero-actor[data-pose="beam"] .hero-beam-arms, .hero-actor[data-pose="defend"] .hero-defense-arms { opacity: 1; visibility: visible; }
+.hero-actor[data-pose="beam"] .hero-rig { animation: hero-beam-recoil 1.15s ease-out both; }
+.hero-actor[data-pose="beam"] .hero-beam-flare { animation: beam-flash .16s ease-in-out infinite alternate; }
+.hero-actor[data-pose="beam"] .hero-power-aura { opacity: .8; animation: aura-breathe .55s ease-in-out infinite alternate; }
+.hero-actor[data-pose="defend"] .hero-rig { animation: hero-guard-enter .3s ease-out both; }
+.hero-actor[data-pose="defend"] .hero-defense-arms { animation: hero-cross-guard .3s ease-out both; transform-origin: center; }
+.hero-actor[data-pose="defend"] .hero-shield { animation: shield-breathe 1.6s ease-in-out infinite; }
+.hero-actor[data-pose="dodge"] .hero-rig { animation: hero-dodge .62s cubic-bezier(.18,.76,.2,1) both; }
+.hero-actor[data-pose="dodge"] .hero-left-arm { animation: hero-dodge-arm .62s ease-in-out both; }
+.hero-actor[data-pose="hurt"] .hero-rig { animation: actor-hurt .55s ease-out both; }
+.hero-actor[data-pose="hurt"] .hero-eyes { animation: none; transform: scaleY(.5); }
+.hero-actor[data-pose="victory"] .hero-rig { animation: hero-victory 1.15s ease-in-out infinite; }
+.hero-actor[data-pose="victory"] .hero-right-arm { animation: hero-victory-arm 1.15s ease-in-out infinite; }
+.hero-actor[data-pose="victory"] .hero-left-arm { animation: none; transform: rotate(24deg); }
+.hero-actor[data-pose="victory"] .hero-power-aura { opacity: .65; animation: aura-breathe 1.5s ease-in-out infinite; }
+.hero-actor[data-pose="defeat"] .hero-rig { animation: hero-defeat .8s ease-out both; }
+.hero-actor[data-pose="defeat"] .hero-head { transform: rotate(12deg) translateY(10px); }
+.hero-actor[data-pose="defeat"] .hero-crystal { opacity: .3; }
+.hero-actor[data-pose="defeat"] .hero-eyes { animation: none; transform: scaleY(.22); }
+.hero-actor[data-pose="charge"] .hero-rig { animation: hero-charge .14s ease-in-out infinite alternate; }
+.hero-actor[data-pose="charge"] .hero-power-aura { animation: aura-breathe .7s ease-in-out infinite alternate; opacity: .85; }
+.hero-actor[data-pose="charge"] .hero-left-arm { animation: none; transform: rotate(24deg); }
+.hero-actor[data-pose="charge"] .hero-right-arm { animation: none; transform: rotate(-24deg); }
+.hero-actor[data-pose="charge"] .crystal-halo { animation-duration: .3s; }
+
+.monster-rig { animation: monster-breathe 3s ease-in-out infinite; }
+.monster-head { transform-origin: 50% 95%; animation: monster-head-idle 5s ease-in-out infinite; }
+.monster-left-arm { transform-box: view-box; transform-origin: 116px 219px; }
+.monster-right-arm { transform-box: view-box; transform-origin: 244px 219px; }
+.monster-left-arm { animation: monster-claws-idle 3s ease-in-out infinite; }
+.monster-right-arm { animation: monster-claws-idle 3s ease-in-out infinite reverse; }
+.monster-tail { transform-origin: 8% 50%; animation: monster-tail-swing 4s ease-in-out infinite; }
+.monster-eyes { transform-origin: center; animation: eye-blink 7.5s infinite; }
+.monster-energy { animation: monster-energy-pulse 2.4s ease-in-out infinite; }
+.monster-actor[data-pose="attack"] .monster-rig { animation: monster-lunge .85s ease-in-out both; }
+.monster-actor[data-pose="attack"] .monster-left-arm { animation: monster-claw .85s ease-in-out both; }
+.monster-actor[data-pose="attack"] .monster-right-arm { animation: monster-claw-other .85s ease-in-out both; }
+.monster-actor[data-pose="attack"] .monster-slash { animation: monster-slash .85s ease-out both; transform-origin: center; }
+.monster-actor[data-pose="charge"] .monster-rig { animation: monster-charge .13s ease-in-out infinite alternate; }
+.monster-actor[data-pose="charge"] .monster-aura { animation: aura-breathe .65s ease-in-out infinite alternate; opacity: 1; }
+.monster-actor[data-pose="charge"] .monster-energy { animation-duration: .25s; }
+.monster-actor[data-pose="charge"] .monster-eyes { animation: monster-energy-pulse .25s ease-in-out infinite alternate; }
+.monster-actor[data-pose="charge"] .monster-left-arm { animation: none; transform: rotate(32deg); }
+.monster-actor[data-pose="charge"] .monster-right-arm { animation: none; transform: rotate(-32deg); }
+.monster-actor[data-pose="hurt"] .monster-rig { animation: monster-hurt .55s ease-out both; }
+.monster-actor[data-pose="hurt"] .monster-stun { animation: monster-stun .55s ease-out both; transform-origin: center; }
+.monster-actor[data-pose="defeat"] .monster-rig { animation: monster-defeat 1s ease-out both; }
+.monster-actor[data-pose="defeat"] .monster-eyes { opacity: .15; animation: none; transform: scaleY(.1); }
+.monster-actor[data-pose="defeat"] .monster-energy { animation: none; opacity: .1; }
+.monster-actor[data-pose="defeat"] .monster-stun { animation: monster-dizzy 2s linear infinite; opacity: .8; }
+.monster-actor[data-pose="defeat"] .monster-head { animation: none; transform: rotate(-13deg); }
+.monster-actor[data-pose="defend"] .monster-left-arm { animation: none; transform: rotate(-48deg); }
+.monster-actor[data-pose="defend"] .monster-right-arm { animation: none; transform: rotate(48deg); }
+.monster-actor[data-pose="victory"] .monster-rig { animation: monster-roar 1.2s ease-in-out infinite; }
+.monster-actor[data-pose="dodge"] .monster-rig { animation: monster-dodge .62s ease-in-out both; }
+
+@keyframes hero-breathe { 0%,100% { transform: translateY(0) scaleY(1); } 50% { transform: translateY(-3px) scaleY(1.008); } }
+@keyframes hero-arm-idle { 0%,100% { transform: rotate(0); } 50% { transform: rotate(2deg); } }
+@keyframes shadow-breathe { 0%,100% { transform: scaleX(1); opacity: .28; } 50% { transform: scaleX(.94); opacity: .22; } }
+@keyframes eye-blink { 0%,43%,46%,100% { transform: scaleY(1); } 44.2%,45.2% { transform: scaleY(.1); } }
+@keyframes crystal-pulse { 0%,100% { opacity: .17; } 50% { opacity: .8; } }
+@keyframes hero-wave { 0%,100% { transform: rotate(-110deg); } 20%,60% { transform: rotate(-126deg); } 40%,80% { transform: rotate(-95deg); } }
+@keyframes hero-head-tilt { 0%,100% { transform: rotate(0); } 45% { transform: rotate(-6deg); } }
+@keyframes hero-eat-arm { 0%,100% { transform: rotate(0); } 35%,70% { transform: rotate(-157deg) scale(.65); } }
+@keyframes hero-nod { 0%,100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(4px) rotate(-2deg); } }
+@keyframes heart-rise { 0% { opacity: 0; transform: translateY(20px) scale(.4); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px) scale(1); } }
+@keyframes hero-training { 0%,50%,100% { transform: translateY(0); } 25%,75% { transform: translateY(-8px) rotate(-2deg); } }
+@keyframes hero-train-left { 0%,100% { transform: rotate(-28deg); } 25% { transform: rotate(-96deg); } 50%,75% { transform: rotate(15deg); } }
+@keyframes hero-train-right { 0%,25%,100% { transform: rotate(-15deg); } 50% { transform: rotate(-95deg); } 75% { transform: rotate(20deg); } }
+@keyframes hero-train-leg { 0%,50%,100% { transform: rotate(0); } 25% { transform: rotate(8deg) translateY(-4px); } 75% { transform: rotate(-7deg); } }
+@keyframes hero-sleep { 0%,100% { transform: translateY(11px) rotate(-5deg) scaleY(.97); } 50% { transform: translateY(8px) rotate(-5deg) scaleY(.985); } }
+@keyframes sleep-float { 0% { opacity: 0; transform: translate(-7px,15px); } 35%,65% { opacity: .85; } 100% { opacity: 0; transform: translate(4px,-15px); } }
+@keyframes hero-transform { 0% { transform: scale(.82) translateY(18px); filter: brightness(1); } 35% { transform: scale(.94) translateY(-13px); filter: brightness(2.3); } 64% { transform: scale(1.045) translateY(-8px); filter: brightness(1.65); } 100% { transform: scale(1); filter: brightness(1); } }
+@keyframes hero-transform-aura { 0% { opacity: 0; transform: scale(.35); } 35% { opacity: 1; transform: scale(1.2); } 70% { opacity: .9; transform: scale(1.12); } 100% { opacity: 0; transform: scale(1.3); } }
+@keyframes hero-transform-left { 0%,100% { transform: rotate(0); } 35%,65% { transform: rotate(75deg); } }
+@keyframes hero-transform-right { 0%,100% { transform: rotate(0); } 35%,65% { transform: rotate(-75deg); } }
+@keyframes hero-punch-body { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-12px) rotate(-4deg); } 42%,58% { transform: translateX(27px) rotate(6deg); } }
+@keyframes hero-punch-arm { 0%,100% { transform: rotate(0); } 20% { transform: rotate(30deg); } 42%,58% { transform: rotate(-102deg) scaleY(1.09); } }
+@keyframes hero-punch-guard { 0%,100% { transform: rotate(0); } 42%,58% { transform: rotate(-35deg); } }
+@keyframes hero-beam-recoil { 0% { transform: translateX(0); } 18% { transform: translateX(-12px) rotate(-3deg); } 30%,50%,70% { transform: translateX(-8px) rotate(-2deg); } 40%,60%,80% { transform: translateX(-11px) rotate(-2deg); } 100% { transform: translateX(0); } }
+@keyframes beam-flash { from { opacity: .7; transform: scale(.88); } to { opacity: 1; transform: scale(1.2); } }
+@keyframes hero-guard-enter { from { transform: translateY(0); } to { transform: translateY(5px) scaleY(.98); } }
+@keyframes hero-cross-guard { from { opacity: .5; transform: translateY(10px) scale(.91); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes shield-breathe { 0%,100% { opacity: .65; transform: scale(.98); } 50% { opacity: 1; transform: scale(1.02); } }
+@keyframes hero-dodge { 0%,100% { transform: translateX(0) skewX(0); opacity: 1; } 35%,58% { transform: translateX(-46px) translateY(8px) skewX(-8deg); opacity: .55; } }
+@keyframes hero-dodge-arm { 0%,100% { transform: rotate(0); } 40% { transform: rotate(44deg); } }
+@keyframes actor-hurt { 0%,100% { transform: translateX(0); filter: none; } 18% { transform: translateX(-17px) rotate(-5deg); filter: brightness(1.8) sepia(.4); } 35% { transform: translateX(7px) rotate(2deg); } 55% { transform: translateX(-9px) rotate(-3deg); filter: brightness(1.5); } 75% { transform: translateX(3px); } }
+@keyframes hero-victory { 0%,100% { transform: translateY(0); } 28% { transform: translateY(-18px) rotate(-3deg); } 56% { transform: translateY(0) scaleY(.97); } 75% { transform: translateY(-5px); } }
+@keyframes hero-victory-arm { 0%,100% { transform: rotate(-110deg); } 28%,75% { transform: rotate(-128deg); } }
+@keyframes hero-defeat { 0% { transform: translateY(0); } 55% { transform: translateY(15px) rotate(-9deg) scaleY(.92); } 100% { transform: translateY(19px) rotate(-11deg) scaleY(.9); opacity: .75; } }
+@keyframes hero-charge { from { transform: translate(-.8px,3px) scaleY(.99); } to { transform: translate(.8px,3px) scaleY(.99); } }
+@keyframes aura-breathe { from { transform: scale(.93); opacity: .5; } to { transform: scale(1.055); opacity: 1; } }
+@keyframes monster-breathe { 0%,100% { transform: scaleY(1); } 50% { transform: scaleY(1.025) translateY(-2px); } }
+@keyframes monster-head-idle { 0%,100% { transform: rotate(-1deg); } 50% { transform: rotate(2deg) translateY(2px); } }
+@keyframes monster-claws-idle { 0%,100% { transform: rotate(0); } 50% { transform: rotate(5deg); } }
+@keyframes monster-tail-swing { 0%,100% { transform: rotate(-3deg); } 50% { transform: rotate(5deg); } }
+@keyframes monster-energy-pulse { 0%,100% { opacity: .48; } 50% { opacity: 1; } }
+@keyframes monster-lunge { 0%,100% { transform: translateX(0); } 22% { transform: translateX(12px) rotate(4deg); } 46%,63% { transform: translateX(-29px) rotate(-7deg) scaleY(.97); } }
+@keyframes monster-claw { 0%,100% { transform: rotate(0); } 24% { transform: rotate(116deg); } 48% { transform: rotate(48deg) scaleY(1.12); } 65% { transform: rotate(-22deg); } }
+@keyframes monster-claw-other { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-45deg); } 55% { transform: rotate(55deg); } }
+@keyframes monster-slash { 0%,27%,85%,100% { opacity: 0; transform: translate(20px,-25px) scale(.65); } 40% { opacity: 1; transform: translate(-16px,0) scale(1); } 65% { opacity: 0; transform: translate(-27px,29px) scale(1.12); } }
+@keyframes monster-charge { from { transform: translate(-1px,5px) scaleY(.96); } to { transform: translate(1px,5px) scaleY(.96); } }
+@keyframes monster-hurt { 0%,100% { transform: translateX(0); filter: none; } 20% { transform: translateX(21px) rotate(7deg); filter: brightness(1.9); } 42% { transform: translateX(-5px) rotate(-2deg); } 62% { transform: translateX(11px) rotate(4deg); filter: brightness(1.4); } 80% { transform: translateX(2px); } }
+@keyframes monster-stun { 0%,100% { opacity: 0; transform: scale(.8); } 20%,60% { opacity: 1; transform: scale(1.08) rotate(8deg); } }
+@keyframes monster-defeat { 0% { transform: rotate(0); } 25% { transform: rotate(8deg) translateY(6px); } 55% { transform: rotate(-5deg) translateY(14px); } 100% { transform: rotate(16deg) translateY(25px) scaleY(.8); opacity: .5; filter: saturate(.4); } }
+@keyframes monster-dizzy { 0%,100% { transform: translateY(3px) rotate(-4deg); } 50% { transform: translateY(-4px) rotate(4deg); } }
+@keyframes monster-roar { 0%,100% { transform: scale(1); } 50% { transform: scale(1.03) translateY(-7px); } }
+@keyframes monster-dodge { 0%,100% { transform: translateX(0); opacity: 1; } 40%,58% { transform: translateX(42px) skewX(7deg); opacity: .6; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .actor .character-art *, .actor .character-art { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  .hero-actor[data-pose="defend"] .hero-shield, .hero-actor[data-pose="charge"] .hero-power-aura, .monster-actor[data-pose="charge"] .monster-aura { opacity: .8; }
+  .hero-actor[data-pose="wave"] .hero-right-arm, .hero-actor[data-pose="victory"] .hero-right-arm { transform: rotate(-110deg); }
+}
