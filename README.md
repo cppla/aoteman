@@ -111,18 +111,18 @@ pet.example.com {
 
 本项目后续更新默认完成 **提交并推送 Git → Docker 更新服务器**，具体协作约定见 [AGENTS.md](AGENTS.md)。
 
-- 服务器：`alisg.cloudcpp.com`，SSH 端口 `24`，项目目录 `/opt/aoteman`。
+- 服务器：`alisg.cloudcpp.com`，SSH 端口 `24`，项目目录 `/data/aoteman`。
 - 试玩入口：`http://alisg.cloudcpp.com:8787`。
 - Compose 项目：`aoteman`；成长数据库卷：`aoteman_data`。
 
-每次先在本机完成验证、提交并推送 `main`，用 `git ls-remote origin refs/heads/main` 核对 GitHub 上的完整 SHA。服务器只更新 `/opt/aoteman`；已有工作区不干净或不能快进时，先核对差异，不覆盖本地修改或其他克隆。
+每次先在本机完成验证、提交并推送 `main`，用 `git ls-remote origin refs/heads/main` 核对 GitHub 上的完整 SHA。服务器只更新 `/data/aoteman`；已有工作区不干净或不能快进时，先核对差异，不覆盖本地修改或其他克隆。
 
 在服务器上将 `release_sha` 设为刚才确认的完整 SHA，再更新：
 
 ```sh
 set -eu
 : "${release_sha:?请先设置已确认的完整提交 SHA}"
-cd /opt/aoteman
+cd /data/aoteman
 test "$(git branch --show-current)" = main
 test -z "$(git status --porcelain)"
 git pull --ff-only origin main
@@ -148,7 +148,7 @@ scp "/tmp/aoteman-$release_sha.bundle" alisg-cloudcpp:/tmp/
 ```sh
 set -eu
 : "${release_sha:?请先设置已确认的完整提交 SHA}"
-cd /opt/aoteman
+cd /data/aoteman
 test "$(git branch --show-current)" = main
 test -z "$(git status --porcelain)"
 git bundle verify "/tmp/aoteman-$release_sha.bundle"
@@ -160,7 +160,7 @@ test "$(git rev-parse HEAD)" = "$release_sha"
 docker compose ps
 ```
 
-首次部署也可从 bundle 克隆，但必须先确认 `/opt/aoteman` 不存在，并将克隆后的 `origin` 设置为 `https://github.com/cppla/aoteman.git`。bundle 只是代码传输备用方式，不包含实际成长库，也不代替 SQLite 备份和部署检查。
+首次部署也可从 bundle 克隆，但必须先确认 `/data/aoteman` 不存在，并将克隆后的 `origin` 设置为 `https://github.com/cppla/aoteman.git`。bundle 只是代码传输备用方式，不包含实际成长库，也不代替 SQLite 备份和部署检查。
 
 首次迁移本地试玩快照后，新网址与 `localhost` 仍使用不同的浏览器网站数据：在原本地页面的存档设置中保存恢复码，到服务器页面使用同一恢复码，即可接回原来的伙伴。后续以服务器成长库为准；本地和服务器是两个独立数据库，更新服务器时不再导入本地旧快照。部署后需核对运行版本、Web/API 健康、公开入口及存档保留情况，再确认交付。
 
