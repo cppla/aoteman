@@ -8,6 +8,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${PORT:-8787}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -21,3 +24,32 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  api:
+    image: aoteman-api:local
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      AOTEMAN_DATA_DIR: /data
+      BACKUP_INTERVAL_SECONDS: "900"
+    volumes:
+      - data:/data
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  data:
+    # Keep the same persistent store even when the checkout directory changes.
+    name: "${AOTEMAN_VOLUME_NAME:-aoteman_data}"

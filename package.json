@@ -1,13 +1,16 @@
 {
   "name": "aoteman-galaxy-companion",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "description": "银河小伙伴 · 奥特曼电子宠物",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "dev": "python3 -m http.server 8787 --directory public",
-    "test:browser": "node tests/browser.mjs"
+    "dev": "docker compose up --build",
+    "test:browser": "node tests/browser.mjs",
+    "test:api": "python3 -m unittest discover -s tests -p test_api.py -v",
+    "test:sync-browser": "node tests/server-save-browser.mjs",
+    "test:battle-save": "node tests/battle-save-browser.mjs"
   },
   "engines": { "node": ">=20" },
   "devDependencies": { "playwright": "1.62.1" }

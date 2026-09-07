@@ -1,6 +1,8 @@
 import { heroSVG, monsterSVG } from './characters.js';
 import { openBattle, MONSTERS } from './battle.js';
 import { SAVE_KEY, LEGACY_KEY, freshState, sanitizeState, passTime, levelInfo, mutate, care, dailyReady, claimDaily, startExpedition, settleExpedition } from './pet-state.js';
+import { SaveSync } from './save-sync.js';
+import { mountSavePanel } from './save-panel.js';
 
 const $ = id => document.getElementById(id);
 const paths = {
@@ -25,6 +27,7 @@ const decorate = (root = document) => root.querySelectorAll('[data-icon]').forEa
 const escapeText = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let state = freshState(), storageOK = true, storageMessage = '', busy = false, battleActive = false, currentBattle = null, lastStoredRaw = null;
 let poseTimer, toastTimer, lastPet = 0, audioContext;
+let cloud, cloudBooting = true, cloudInfo = { status: 'loading', message: '正在连接服务器存档' };
 try {
   lastStoredRaw = localStorage.getItem(SAVE_KEY);
   const raw = lastStoredRaw || localStorage.getItem(LEGACY_KEY);
@@ -34,6 +37,7 @@ try {
       localStorage.setItem(`${SAVE_KEY}-recovery`, raw);
       storageMessage = '旧存档无法读取，已保留原始备份并开始新的冒险。';
     }
+    if (!localStorage.getItem('aoteman-before-server-migration')) localStorage.setItem('aoteman-before-server-migration', raw);
   }
 } catch { storageOK = false; }
 passTime(state);
@@ -41,6 +45,8 @@ $('petHero').innerHTML = heroSVG('home');
 decorate();
 
 function syncExternalState() {
+  // The API sync layer owns cross-tab revisions; a shared cache is not authoritative.
+  if (cloud) return false;
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (raw && raw !== lastStoredRaw) {
@@ -52,16 +58,32 @@ function syncExternalState() {
   } catch { /* Preserve the current playable state when another write is invalid. */ }
   return false;
 }
-function save() {
+function save({ server = true, reason = 'gameplay' } = {}) {
   try {
     // Do not replace newer progress from another tab with a stale in-memory copy.
     if (syncExternalState()) notify('已同步另一个页面的新进度。');
     lastStoredRaw = JSON.stringify(state); localStorage.setItem(SAVE_KEY, lastStoredRaw); storageOK = true;
   }
   catch { storageOK = false; }
-  $('saveStatus').innerHTML = `<i></i>${storageOK ? '已自动存档' : '暂时无法存档'}`;
-  $('saveStatus').classList.toggle('error', !storageOK);
-  $('saveStatus').title = storageOK ? '进度已保存在当前浏览器，可在设置中导出备份' : '浏览器存储不可用，请在设置中导出备份';
+  if (server && cloud) cloud.enqueue(state, { reason });
+  updateSaveStatus();
+}
+function updateSaveStatus(info = cloudInfo) {
+  const wasTransitioning = Boolean(cloudInfo.transition);
+  cloudInfo = info;
+  const labels = { loading: '连接存档中', synced: '服务器已保存', pending: '正在同步进度', offline: '本机已保存 · 待同步', conflict: '两份进度待选择', error: '存档同步需处理' };
+  const status = info.status || 'loading';
+  $('saveStatus').innerHTML = `<i></i>${labels[status] || '检查存档状态'}`;
+  $('saveStatus').dataset.status = status;
+  $('saveStatus').classList.toggle('error', ['offline','conflict','error'].includes(status) || !storageOK);
+  $('saveStatus').title = info.message || labels[status];
+  const banner = $('cloudBanner');
+  banner.hidden = !['offline','conflict','error'].includes(status) && storageOK;
+  $('cloudBannerText').textContent = !storageOK ? '浏览器暂时不能保存本机备份，请下载进度文件并检查服务器同步状态。' : status === 'conflict' ? '另一台设备也更新了进度。两份存档都已保留，请选择要继续的一份。' : status === 'offline' ? '暂时连不上服务器，进度已留在本机，连接恢复后继续同步。' : info.message || '存档同步需要处理，请打开存档设置。';
+  const panelStatus = $('panelSyncStatus');
+  if (panelStatus) panelStatus.textContent = `${labels[status] || '检查存档状态'}${info.revision ? ` · 版本 ${info.revision}` : ''}`;
+  const panelMessage = $('panelSyncMessage'); if (panelMessage) panelMessage.textContent = info.message || '';
+  if (wasTransitioning !== Boolean(info.transition)) render();
 }
 function notify(text) {
   clearTimeout(toastTimer); $('toast').textContent = text; $('toast').hidden = false;
@@ -102,6 +124,7 @@ function leveled(before) {
 }
 const sceneNames = { base:'星光基地', moon:'静谧月海', sunset:'落日之城' };
 function render() {
+  const saveBusy = cloudBooting || cloudInfo.transition;
   const level = levelInfo(state.xp);
   for (const key of ['food','energy','mood']) {
     const val = Math.round(state[key]); $(key + 'Value').innerHTML = `${val}<small>/100</small>`;
@@ -119,16 +142,17 @@ function render() {
   $('transformBtn').setAttribute('aria-pressed', state.grown); $('transformText').textContent = state.grown ? '变回小伙伴' : '银河变身';
   $('moodTag').textContent = state.sleeping ? '星光充电中' : state.food < 25 ? '有点饿啦' : state.energy < 25 ? '需要休息' : state.mood < 40 ? '想要摸摸' : '元气满满';
   $('restTitle').textContent = state.sleeping ? '轻轻唤醒' : '星光休息'; $('restSubtitle').textContent = state.sleeping ? '每 3 秒恢复 8 活力' : '恢复活力，做个好梦';
-  for (const id of ['feedBtn','trainBtn','defendBtn','transformBtn','fightBtn']) $(id).disabled = busy || battleActive || state.sleeping;
-  for (const id of ['restBtn','petBtn']) $(id).disabled = busy || battleActive;
-  $('sceneBtn').disabled = busy || battleActive;
+  for (const id of ['feedBtn','trainBtn','defendBtn','transformBtn','fightBtn']) $(id).disabled = busy || battleActive || state.sleeping || saveBusy;
+  for (const id of ['restBtn','petBtn']) $(id).disabled = busy || battleActive || saveBusy;
+  $('sceneBtn').disabled = busy || battleActive || saveBusy;
+  for (const id of ['soundBtn','difficultySelect','monsterSelect']) $(id).disabled = saveBusy;
   $('difficultySelect').value = state.difficulty;
   $('soundBtn').setAttribute('aria-pressed', state.sound); $('soundBtn').setAttribute('aria-label', state.sound ? '关闭音效' : '开启音效');
   $('soundBtn').title = state.sound ? '关闭音效' : '开启音效'; $('soundBtn').innerHTML = icon(state.sound ? 'sound' : 'mute');
   const completed = [state.daily.fed >= 1, state.daily.training >= 1, state.daily.battles >= 1];
   ['dailyFeed','dailyTrain','dailyBattle'].forEach((id, index) => { $(id).classList.toggle('done', completed[index]); $(id).querySelector('.task-check').textContent = completed[index] ? '✓' : ''; });
   $('missionCount').textContent = `${completed.filter(Boolean).length} / 3`;
-  $('claimBtn').disabled = busy || battleActive || state.daily.claimed || !dailyReady(state);
+  $('claimBtn').disabled = busy || battleActive || saveBusy || state.daily.claimed || !dailyReady(state);
   $('claimBtn').classList.toggle('ready', dailyReady(state) && !state.daily.claimed);
   $('claimTitle').textContent = state.daily.claimed ? '星光礼已领取' : '今日星光礼';
   $('claimSubtitle').textContent = state.daily.claimed ? '明天再一起收集光芒' : '完成计划 · 15 星光 + 25 经验';
@@ -180,7 +204,7 @@ const monsterDescriptions = {
 // Keep the selection independent of the pet render cycle.
 $('monsterSelect').onchange = e => { $('enemyDescription').textContent = monsterDescriptions[e.target.value]; document.querySelector('.mission-number').textContent = String(e.target.selectedIndex + 1).padStart(2, '0'); };
 function launch(monsterId = $('monsterSelect').value) {
-  if (busy || battleActive) return;
+  if (busy || battleActive || cloudBooting || cloudInfo.transition) return;
   if (!startExpedition(state)) { say('出发需要 15 活力和 10 饱食度，先吃饱、休息好吧！'); notify('先补充星光或休息，银河准备好就能出发。'); return; }
   battleActive = true; save(); render();
   try {
@@ -226,7 +250,7 @@ $('journalNav').onclick = () => {
   ];
   openInfo('每一点成长，都在发光。', `<p class="dialog-lede">${state.training} 次特训，${state.wins} 次守护，${state.blocks} 次成功格挡。我们的故事还在继续。</p><div class="achievement-grid">${achievements.map(([symbol,title,description,unlocked]) => `<div class="achievement ${unlocked ? 'unlocked' : ''}"><span data-icon="${symbol}"></span><b>${title}</b><small>${unlocked ? '已点亮 · ' : ''}${description}</small></div>`).join('')}</div><div class="card-overline" style="margin-bottom:12px">OUR RECENT MEMORIES / 最近 30 条</div>${state.journal.length ? `<ul class="journal-list">${state.journal.map(entry => `<li><time>${new Date(entry.at).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})}</time><span>${escapeText(entry.text)}</span></li>`).join('')}</ul>` : '<p class="empty-journal">先喂一颗星光，写下故事的第一页吧。</p>'}`, 'GROWING TOGETHER');
 };
-$('helpBtn').onclick = () => openInfo('你好，银河的新搭档。', `<p class="dialog-lede">你的小小奥特曼不会死亡，也不用急着完成什么。喂点星光、摸摸他，一起慢慢长大就好。</p><div class="guide-grid"><div class="guide-item"><b>01 / 好好照顾</b><p>喂食免费：+25 饱食、+5 活力、+5 心情。特训消耗 8 饱食、12 活力，获得 20 经验和 5 星光。点击银河可摸摸他。</p></div><div class="guide-item"><b>02 / 休息与变身</b><p>休息每 3 秒恢复 8 活力，可随时唤醒。「银河变身」让小伙伴变成光之巨人；「防御练习」可在基地练习 X 姿势。</p></div><div class="guide-item"><b>03 / 选择出击</b><p>每场战斗消耗 15 活力、10 饱食。1 银河拳积攒光能，2 银河光线消耗光能，3 满能量释放终结。绿色区域攻击更强。</p></div><div class="guide-item"><b>04 / 交叉双臂，守护你</b><p>怪兽预警时按 4 或点 X 防御，普通格挡减伤 90%，最后一小段时间完美格挡可免伤。5 可闪避，战斗中可点暂停；离开页面会自动暂停。</p></div></div><p class="guide-note">完成战斗可推进每日计划，撤退不计入；胜利获得 40 经验与 20 星光，失败也有 5 经验。星光可以解锁场景。进度仅存当前浏览器，换设备前请到设置中导出存档。离线状态最多结算 8 小时。</p>`, 'NEW PARTNER HANDBOOK');
+$('helpBtn').onclick = () => openInfo('你好，银河的新搭档。', `<p class="dialog-lede">你的小小奥特曼不会死亡，也不用急着完成什么。喂点星光、摸摸他，一起慢慢长大就好。</p><div class="guide-grid"><div class="guide-item"><b>01 / 好好照顾</b><p>喂食免费：+25 饱食、+5 活力、+5 心情。特训消耗 8 饱食、12 活力，获得 20 经验和 5 星光。点击银河可摸摸他。</p></div><div class="guide-item"><b>02 / 休息与变身</b><p>休息每 3 秒恢复 8 活力，可随时唤醒。「银河变身」让小伙伴变成光之巨人；「防御练习」可在基地练习 X 姿势。</p></div><div class="guide-item"><b>03 / 选择出击</b><p>每场战斗消耗 15 活力、10 饱食。1 银河拳积攒光能，2 银河光线消耗光能，3 满能量释放终结。绿色区域攻击更强。</p></div><div class="guide-item"><b>04 / 交叉双臂，守护你</b><p>怪兽预警时按 4 或点 X 防御，普通格挡减伤 90%，最后一小段时间完美格挡可免伤。5 可闪避，战斗中可点暂停；离开页面会自动暂停。</p></div></div><p class="guide-note">完成战斗可推进每日计划，撤退不计入；胜利获得 40 经验与 20 星光，失败也有 5 经验。星光可以解锁场景。进度会自动同步到服务器。换设备时输入同一恢复码，或下载恢复文件随身备份。离线状态最多结算 8 小时。</p>`, 'NEW PARTNER HANDBOOK');
 $('sceneBtn').onclick = showScenes;
 function showScenes() {
   openInfo('给银河，一个喜欢的家。', `<p class="dialog-lede">已收集 ${state.stars} 星光。用训练与守护得到的星光，解锁新的风景。</p><div class="dialog-grid">${[['base',0,'最初相遇的地方'],['moon',30,'和月亮一起安静发光'],['sunset',50,'把日落装进每一天']].map(([id,cost,desc]) => `<button class="scene-card ${id} ${state.scene === id ? 'selected' : ''}" data-scene-choice="${id}" data-cost="${cost}" aria-pressed="${state.scene === id}"><strong>${sceneNames[id]}</strong><small>${desc}</small><small>${state.scene === id ? '✓ 当前场景' : state.unlocked.includes(id) ? '已解锁 · 点击切换' : `${cost} 星光解锁`}</small></button>`).join('')}</div>`, 'A HOME AMONG THE STARS');
@@ -240,40 +264,49 @@ function showScenes() {
   });
 }
 $('settingsBtn').onclick = showSettings;
+$('saveStatus').onclick = showSettings;
+$('cloudBannerBtn').onclick = showSettings;
 function showSettings() {
-  openInfo('把你们的故事，好好收藏。', `<p class="dialog-lede">${storageOK ? '当前进度会自动保存在这个浏览器。' : '当前浏览器暂时无法存储，请及时导出进度。'}不同设备、浏览器或网址之间不会自动同步；导出一份存档，就可以带银河一起出发。</p><div class="settings-block"><h3>备份与恢复</h3><p>导出 JSON 文件到本机，在另一个浏览器导入即可继续。导入前会展示进度并等待你确认。</p><div class="settings-actions"><button class="dialog-button primary" id="exportBtn">导出当前存档 ↓</button><button class="dialog-button" id="importBtn">导入存档 ↑</button></div><input type="file" id="importFile" accept=".json,application/json" hidden><div id="importFeedback" role="status"></div></div><div class="settings-block"><h3>你的银河档案</h3><p>Lv. ${levelInfo(state.xp).level} · ${state.stars} 星光 · ${state.wins} 次守护成功<br>自动保存：${storageOK ? '正常' : '不可用，请导出备份'} · 音效：${state.sound ? '开启' : '关闭'}<br>存档只留在你选择的浏览器或导出文件中，无需登录。</p></div>`, 'SAVE YOUR LITTLE UNIVERSE');
-  $('exportBtn').onclick = () => {
-    passTime(state); save();
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), a = document.createElement('a');
-    a.href = url; a.download = `galaxy-companion-${new Date().toISOString().slice(0,10)}.json`; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-    $('importFeedback').textContent = '已开始下载存档。请妥善保存这份文件。';
-  };
-  $('importBtn').onclick = () => $('importFile').click();
-  $('importFile').onchange = async e => {
-    const file = e.target.files[0]; if (!file) return;
-    try {
-      if (file.size > 100000) throw new Error('存档文件过大，请选择银河小伙伴导出的 JSON 文件。');
-      const imported = sanitizeState(JSON.parse(await file.text()));
-      $('importFeedback').innerHTML = `<div class="save-preview"><p>发现存档：Lv. ${levelInfo(imported.xp).level} · ${imported.stars} 星光 · ${imported.wins} 次守护成功</p><p>导入将替换当前进度。建议先导出当前存档。</p><div class="settings-actions"><button class="dialog-button primary" id="confirmImport">确认使用这份存档</button><button class="dialog-button" id="cancelImport">取消</button></div></div>`;
-      $('confirmImport').onclick = () => {
-        clearTimeout(poseTimer); busy = false; state = imported; passTime(state); setPose(state.sleeping ? 'sleep' : 'wave', state.sleeping ? 0 : 1300);
-        save(); render(); $('infoDialog').close(); say('欢迎回来！带着我们的故事，继续冒险吧。'); notify(storageOK ? '存档已恢复并保存' : '存档已载入，但浏览器暂时无法保存，请及时导出');
-      };
-      $('cancelImport').onclick = () => { $('importFeedback').textContent = '已取消导入，当前进度保持不变。'; };
-    } catch (error) { $('importFeedback').textContent = error instanceof SyntaxError ? '文件不是有效的 JSON 存档，当前进度保持不变。' : error.message; }
-    e.target.value = '';
-  };
+  openInfo('把你们的故事，好好收藏。', '', 'SAVE YOUR LITTLE UNIVERSE');
+  if (!$('infoDialog').open) return;
+  mountSavePanel($('dialogContent'), {
+    sync: cloud, getState: () => state, notify, canModify: () => !cloudBooting && !cloudInfo.transition,
+    onImport: imported => {
+      if (cloudBooting || cloudInfo.transition) { notify('正在核对服务器进度，请稍等后再导入。'); return; }
+      clearTimeout(poseTimer); busy = false; state = imported; passTime(state);
+      setPose(state.sleeping ? 'sleep' : 'wave', state.sleeping ? 0 : 1300);
+      save({ reason: 'import' }); render(); $('infoDialog').close();
+      say('带着我们的故事，继续冒险吧。');
+      notify('进度已载入，服务器保存状态请看顶部提示。');
+    }
+  });
+  updateSaveStatus();
 }
 
 // Read newer saves before user mutations, scheduled ticks, or a tab becomes active.
 document.addEventListener('click', () => syncExternalState(), true);
 document.addEventListener('change', () => syncExternalState(), true);
 window.addEventListener('storage', event => { if (event.key === SAVE_KEY && event.newValue) syncExternalState(); });
-setInterval(() => { if (!document.hidden) { syncExternalState(); passTime(state); render(); save(); } }, 3000);
-document.addEventListener('visibilitychange', () => { syncExternalState(); passTime(state); save(); if (!document.hidden) render(); });
-window.addEventListener('pagehide', () => { syncExternalState(); passTime(state); save(); });
+setInterval(() => { if (!document.hidden && !cloudBooting) { passTime(state); render(); save({ server: false }); } }, 3000);
+document.addEventListener('visibilitychange', () => { if (!cloudBooting) { passTime(state); save({ server: false }); if (document.hidden) void cloud?.flush(); } if (!document.hidden) render(); });
+window.addEventListener('pagehide', () => { if (!cloudBooting) { passTime(state); save({ server: false }); void cloud?.flush(); } });
 if (state.sleeping) { setPose('sleep', 0); say('呼噜…欢迎回来，我还在星光里充电呢。'); }
 else if (state.xp > 0 || state.fed > 0) { setPose('wave', 1500); say('你回来啦！银河一直在这里等你。'); }
-render(); save();
+render(); save({ server: false });
+try {
+cloud = new SaveSync({
+  onState: incoming => {
+    try {
+      state = sanitizeState(incoming); passTime(state);
+      if (!busy && !battleActive) $('petHero').dataset.pose = state.sleeping ? 'sleep' : 'idle';
+      save({ server: false }); render();
+    } catch { notify('服务器返回的存档暂时无法读取，本机备份已保留。'); }
+  },
+  onStatus: updateSaveStatus
+});
+await cloud.start(state);
+}
+catch { updateSaveStatus(cloud?.getInfo() || { status: 'error', message: '浏览器无法初始化存档同步，请先导出本机进度。' }); }
+finally { cloudBooting = false; render(); }
 if (storageMessage) { say(storageMessage); notify(storageMessage); }
 else if (!storageOK) notify('浏览器存储不可用。游玩后记得在设置中导出进度。');

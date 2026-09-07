@@ -1,6 +1,6 @@
 # 银河小伙伴 · 奥特曼电子宠物
 
-一个可以陪伴、养成和战斗的奥特曼电子宠物。浏览器直接游玩，原生 JavaScript ES Modules + SVG / CSS 动画，无需 Node.js 服务、数据库或外部素材接口。
+可以陪伴、养成和战斗的奥特曼电子宠物。前端使用原生 JavaScript、SVG 和 CSS 动画；Nginx 提供网页和 API 入口，Python + SQLite 在服务器保存成长进度。
 
 ![星光基地](docs/screenshots/base.png)
 
@@ -8,12 +8,32 @@
 
 ## 玩法
 
-- **陪伴养成**：喂食、抚摸、休息与特训会影响饱食度、活力和心情；升级、出击、完成每日计划可积累成长与星光奖励。
-- **自己的小宇宙**：使用星光解锁商店场景，收集怪兽图鉴，查看伙伴的成长记录。
-- **动态战斗**：奥特曼和怪兽都有待机、攻击、受击和行动动画，战斗中可观察怪兽的攻击预警。
-- **真正的 X 防御**：防御时双臂交叉在胸前，普通防御减伤 90%；抓准攻击落点完成完美防御，可免受该次伤害。
-- **技能快捷键**：数字 **1–5** 对应战斗技能，按界面提示切换进攻、防御与闪避，**P** 暂停；也可以直接点击或触摸按钮。
-- **浏览器存档**：成长数据自动保存在当前浏览器，可通过界面导出 JSON 存档，再导入到其他浏览器继续玩；同源的旧版 v1 存档可自动迁移。存档在本机浏览器中，不会自动同步到服务器；更换网址、端口、浏览器或清除网站数据后需要重新导入。
+- **陪伴养成**：喂食、抚摸、休息与特训影响饱食度、活力和心情；升级、出击、完成每日计划可积累成长与星光奖励。
+- **自己的小宇宙**：使用星光解锁场景，收集怪兽图鉴，查看成长记录。
+- **动态战斗**：奥特曼和怪兽都有待机、攻击、受击和行动动画，可观察怪兽的攻击预警。
+- **X 防御**：双臂交叉在胸前，普通防御减伤 90%；抓准攻击落点完成完美防御，可免受该次伤害。
+- **技能快捷键**：数字 **1–5** 对应战斗技能，**P** 暂停，也支持点击和触摸。
+- **服务器存档**：进度通过存档 API 写入 SQLite；恢复码用于在手机、电脑或新域名上接回同一名伙伴，界面会显示同步状态。
+
+## 存档保存在什么地方
+
+| 内容 | 位置 | 更新版本时的行为 |
+| --- | --- | --- |
+| 空 SQLite 模板及结构迁移 | GitHub 中的 `database/initial.sqlite3`、`database/migrations/` | 随代码发布；模板只用于首次创建数据库，迁移升级已有数据库结构 |
+| 实际成长进度、玩家凭证及历史 | Docker 数据卷 `aoteman_data` 中的 `/data/aoteman.sqlite3` | 保留原数据，不从仓库模板覆盖 |
+| 数据库快照 | 同一数据卷内 `/data/backups/` | 有变化时每 15 分钟自动备份，滚动快照保留最近 48 份，每日快照保留最近 30 份 |
+| 升级前、恢复前和手工备份 | `/data/backups/`，可通过脚本导出到主机 | 单独保留，不参与自动快照轮换 |
+| 浏览器副本及同步身份 | 当前浏览器的网站数据 | 辅助离线和重试；跨设备使用恢复码读取服务器进度 |
+
+**GitHub 跟踪空数据库模板和迁移脚本；运行中的成长库不提交到 GitHub，也不打进镜像。** 实际数据库包含玩家数据及访问凭证相关信息，发布这些内容会公开玩家进度；让镜像中的旧存档覆盖正在使用的数据库，也会造成进度回退。`.gitignore` 和 `.dockerignore` 已隔离运行库、WAL 和备份。
+
+更新部署会先生成 SQLite 一致性快照，备份失败就停止升级。数据库由 API 事务写入，并用版本号检查避免多个设备直接覆盖彼此的新存档。
+
+已有浏览器的旧版存档会在首次连接服务器时自动迁移。请先在原网址、原浏览器打开新版并等到同步成功，再切换域名；浏览器按网址隔离数据，新网址无法直接读取旧网址的本地存档。也可以使用 JSON 导出 / 导入转移旧存档。
+
+**请保存恢复码。** 它用于访问对应伙伴的存档；更换设备或清理浏览器数据后，通过恢复码继续游戏。恢复码不应出现在截图、公共仓库或访问日志中。
+
+服务器数据卷可以跨容器重建和代码升级保留数据，但不能抵御服务器磁盘损坏。定期将 SQLite 快照导出到服务器之外，才能在整台服务器丢失后恢复。
 
 ## 本地一键试玩
 
@@ -23,92 +43,152 @@
 ./deploy.sh
 ```
 
-脚本会检查 Docker、构建镜像、启动服务并等待健康检查通过。打开 **http://localhost:8787** 开始试玩。
+脚本检查 Docker，备份已有存档，构建并启动两个服务，等待健康检查通过。打开 **http://localhost:8787** 开始试玩。
 
-端口被占用时，可改用其他端口：
+端口被占用时：
 
 ```sh
 PORT=8888 ./deploy.sh
 ```
 
-## 服务器部署
+默认数据卷名称固定为 `aoteman_data`，不随代码目录重命名而变化。仅在明确需要一个独立环境时设置 `AOTEMAN_VOLUME_NAME`；换成另一个卷名会连接另一套存档。
+
+## 服务器部署与域名
 
 ```sh
 git clone https://github.com/cppla/aoteman.git aoteman
 cd aoteman
-docker compose up -d --build
+./deploy.sh
 ```
 
-访问 `http://<服务器 IP>:8787`。也可运行 `./deploy.sh`，额外等待健康检查并显示访问地址。
+默认映射 `8787 → Nginx 8080`，API 的 `8081` 仅在 Docker 内部访问。网页和 `/api/` 共用同一入口，无需单独绑定 API 域名。
 
-默认映射 `8787 → 容器 8080`，可通过 `PORT` 改端口：
+将你的域名 A / AAAA 记录解析到服务器，然后把域名的 HTTPS 反向代理目标设为 `127.0.0.1:8787`。例如已有 Caddy 运行在宿主机时，可添加：
 
-```sh
-PORT=8888 docker compose up -d --build
+```caddyfile
+pet.example.com {
+    reverse_proxy 127.0.0.1:8787
+}
 ```
 
-需在云安全组及服务器防火墙中允许所选 TCP 端口。使用域名和 HTTPS 时，可让已有反向代理转发到此端口。公开服务器只能分发网页，存档仍由各浏览器分别保管。
+把 `pet.example.com` 换成实际域名，并确保域名解析正确、服务器允许 HTTPS 所需的 80 / 443 端口。Caddy 自身也在容器中时，`127.0.0.1` 指向其自身，应将代理加入同一 Docker 网络并转发到 `web:8080`。可参考 [Caddy 自动 HTTPS 文档](https://caddyserver.com/docs/automatic-https)。
 
-更新代码后，在项目目录再次运行：
+使用其他反向代理时，同样将网页与 `/api/` 一起转发，关闭 `/api/` 的 CDN / 代理缓存。更换域名不会移动服务器数据库；在新域名输入原恢复码即可接回原存档。HTTPS 可保护恢复码在传输中的安全。
+
+## 更新版本，保留成长进度
 
 ```sh
 git pull
 ./deploy.sh
 ```
 
-## 容器管理
+`deploy.sh` 会先调用 SQLite 在线备份接口创建 `/data/backups/pre-deploy-<UTC>.sqlite3`，成功后才构建和更新服务。已有 API 容器状态异常时，脚本保留现场并停止；先查看 API 日志与存档，不会自动删库或重建空库。
+
+普通 `docker compose down` 会删除容器与网络并保留数据卷。再次运行 `./deploy.sh` 时，脚本使用保留的上一版 API 镜像先执行离线备份，再升级。
+
+**不要运行 `docker compose down -v` 或 `docker volume rm aoteman_data`：它们会删除实际成长数据及同卷备份。** 正常更新不需要这些命令。也不要用仓库内的 `database/initial.sqlite3` 手工覆盖 `/data/aoteman.sqlite3`。
+
+## 导出数据库快照
+
+在运行中的项目目录执行：
 
 ```sh
-# 服务及健康状态
-docker compose ps
+# 导出到主机 backups/，同时生成 .sha256 校验文件
+./scripts/backup.sh
 
-# 最近的访问 / 错误日志
-docker compose logs --tail=100 web
-
-# 检查 HTTP 服务
-curl -fsS http://localhost:8787/healthz
-
-# 停止当前项目服务
-docker compose down
+# 或指定主机位置；路径中的空格需加引号
+./scripts/backup.sh /安全备份目录/aoteman-20260907.sqlite3
 ```
 
-镜像使用 [官方 Nginx Alpine 稳定版](https://hub.docker.com/_/nginx) `1.30.4-alpine`。Nginx 以非 root 用户在 `8080` 端口运行，根文件系统只读，临时文件写入 `/tmp` 内存目录。日志自动轮转，服务配置 `restart: unless-stopped`；镜像内置 `/healthz` 健康检查。部署脚本不会清理其他 Docker 镜像、容器或数据。
+脚本先用 SQLite 备份接口生成一致性快照，再从容器复制到主机临时文件并原子落盘；不会直接复制运行中的数据库主文件而漏掉 WAL 中的最新事务。已有同名文件不会覆盖。备份文件权限为 `600`。
+
+把 `.sqlite3` 和 `.sha256` 文件复制到独立磁盘或私人备份存储。**不要提交含实际玩家数据的快照到公开 GitHub 仓库。** 备份属于管理员数据，可恢复全部玩家；玩家界面的 JSON 导出用于单个伙伴的存档迁移。
+
+## 从快照恢复 / 迁移到另一台服务器
+
+恢复会将整套服务器存档回到快照时间点；快照之后的进度不在该备份中。后端会验证文件和数据库结构，自动保留恢复前旧库快照；API 运行时持有文件锁，禁止直接离线覆盖。
+
+在目标服务器检出对应项目版本、构建 API 镜像后，将备份复制到主机。恢复时先停止服务：
+
+```sh
+# 已部署的服务器：停止服务但保留数据卷
+docker compose stop web api
+
+# 新服务器或镜像不存在时，先构建（不会启动 API）
+docker compose build
+
+# 先核对 .sha256 文件中的摘要与备份文件匹配
+LC_ALL=C LANG=C shasum -a 256 /安全备份目录/aoteman-20260907.sqlite3
+
+# 导入已确认的快照；会保留恢复前旧库快照
+./scripts/restore.sh /安全备份目录/aoteman-20260907.sqlite3
+
+# 重新启动，等待健康检查
+docker compose up -d --wait
+```
+
+Linux 也可使用 `sha256sum` 核对摘要。恢复脚本通过标准输入传送备份，因此无需放宽主机文件权限。底层恢复入口为 `python -m server.restore <快照路径>`，必须在 API 服务停止时执行。
+
+恢复失败时脚本不会自动启动服务，原始导入文件保留在 `/data/backups/restore-import.*` 供排查；未通过验证的快照不会替换当前数据库。当前库已经损坏时，显式恢复会先把坏库及 WAL / SHM 原始文件保存到 `/data/backups/damaged-pre-restore-*`，再替换为已验证的备份。
+
+启动后用原恢复码打开伙伴，核对等级、奖励与成长记录。迁移整个数据库后，原恢复码保持有效。
+
+## 容器与 API 检查
+
+```sh
+docker compose ps
+docker compose logs --tail=100 web api
+curl -fsS http://localhost:8787/healthz
+curl -fsS http://localhost:8787/api/healthz
+curl -fsS http://localhost:8787/api/openapi.json
+docker volume inspect aoteman_data
+```
+
+| 接口 | 用途 |
+| --- | --- |
+| `POST /api/v1/profiles` | 新建玩家与存档 |
+| `GET /api/v1/save` | 读取本人最新存档 |
+| `PUT /api/v1/save` | 根据版本号保存进度 |
+| `GET /api/v1/history` | 查询存档历史 |
+| `POST /api/v1/restore` | 恢复本人历史存档 |
+| `GET /api/v1/export` | 导出本人存档 |
+| `GET /api/openapi.json` | 查看接口结构、身份认证和错误定义 |
+
+除健康检查、接口说明和新建玩家外，存档接口需要玩家身份验证。直接查看 OpenAPI 可获得与当前版本一致的请求结构；恢复码与凭证不要放在 URL 查询参数中。
+
+Nginx 使用官方 `nginx:1.30.4-alpine`，API 使用官方 `python:3.13-slim` 和 Gunicorn（1 个 worker、4 个线程），SQLite 由 Python 标准库提供。两个服务都以非 root 身份运行、根文件系统只读，临时目录使用 tmpfs，日志自动轮转。API 仅向 `/data` 写入持久数据。
 
 ## 开发与验证
 
-网页源码位于 `public/`。修改后重新运行 `./deploy.sh` 即可更新容器；也可用静态 HTTP 服务预览该目录。ES Modules 需要通过 HTTP 打开，不要直接双击 `index.html`。
-
-配置检查：
+前端位于 `public/`，后端位于 `server/`，数据库模板和迁移位于 `database/`。完整存档体验需要 API，请使用 Docker 运行；纯静态 HTTP 预览无法测试服务器同步。
 
 ```sh
 docker compose config --quiet
-sh -n deploy.sh
-
-# 有 Node.js 20+ 的开发环境下运行纯逻辑回归测试
+sh -n deploy.sh scripts/backup.sh scripts/restore.sh
 npm test
+python3 -m unittest discover -s tests -p 'test_*.py'
 ```
 
-浏览器回归测试（先启动本地容器）：
+浏览器测试（先启动本地服务）：
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm exec playwright install chromium
 pnpm test:browser
-# 测试其他 HTTP 地址：BASE_URL=http://localhost:8888 pnpm test:browser
+# 测试其他地址：BASE_URL=http://localhost:8888 pnpm test:browser
+
+# 存档同步浏览器回归，默认连接独立测试服务 http://localhost:8789
+pnpm test:sync-browser
+pnpm test:battle-save
+# 指定其他隔离测试地址：BASE_URL=http://localhost:8890 pnpm test:sync-browser
+pnpm test:battle-save
 ```
 
-Playwright 仅用于开发验证，不会进入网页或 Docker 运行镜像。截图和临时存档写入被 Git 忽略的 `test-results/`。
+存档同步回归会创建测试玩家，应连接独立测试数据卷，避免把虚构存档写进日常试玩数据库。例如先用 `PORT=8789 AOTEMAN_VOLUME_NAME=aoteman_sqlite_integration COMPOSE_PROJECT_NAME=aoteman-sqlite-integration ./deploy.sh` 启动隔离服务，再运行 `pnpm test:sync-browser`。
 
-浏览器手工验收建议：
+重点检查旧存档迁移、刷新保留、断线重试、跨标签和跨设备同步、版本冲突、恢复码接回、JSON 导入导出，以及容器重建后存档仍可读取。Playwright 仅用于开发，不进入运行镜像；截图及临时数据写入 Git 忽略的 `test-results/`。
 
-1. 在桌面和手机尺寸检查布局、触摸操作、奥特曼及怪兽动画。
-2. 进入战斗，验证数字 1–5、攻击提示、双臂 X 防御、普通减伤和完美防御。
-3. 进行养成操作，刷新页面检查进度保留；导出后导入，核对进度一致。
-4. 检查后台切换、静音以及重新开始等边界流程，确认无浏览器控制台错误。
-
-自动测试及本机验收结果以项目内测试文件和实际运行记录为准；上述检查清单不代表已经完成服务器生产环境验证。
-
-2026-09-07 本机验收：18 项养成与战斗逻辑测试通过；Chromium 桌面和 375 / 430 / 768px 布局、触摸战斗、减少动态效果、跨标签存档同步、JSON 导入导出通过，未发现页面异常或 HTTP 失败。实际键盘通关并验证胜利界面直接刷新保留奖励。本地 Docker 容器 `/healthz` 返回 200，状态 healthy。尚未部署到远程服务器。
+自动测试、隔离容器验证、本地试玩和远程生产环境是不同层级的证据，以实际运行结果为准。
 
 ## 说明
 
