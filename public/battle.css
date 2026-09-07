@@ -144,7 +144,7 @@
 .timing-sweetspot { position: absolute; top: 0; left: 67%; width: 18%; height: 100%; background: #8df5ca4d; border-left: 1px solid #8df5ca85; border-right: 1px solid #8df5ca85; }
 .timing-cursor { position: absolute; display: block; width: 3px; height: 12px; top: -3px; left: 0; background: #f4f1df; border-radius: 1px; box-shadow: 0 0 8px #fff4; transform: translateX(-50%); }
 .battle-timing > p { margin: 7px 0 0; font-size: 9px; color: #78949e; }
-.battle-actions { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.battle-actions { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 .battle-action-hint { margin: -7px 0 13px; padding-left: 10px; border-left: 2px solid #72a596; color: #a8c9c0; font-size: 11px; line-height: 1.7; min-height: 19px; }
 .battle-action-hint[data-tone="guard"] { color: #f1d2b5; border-left-color: var(--battle-orange); }
 .battle-action { position: relative; min-height: 83px; padding: 13px 8px 12px; border: 1px solid #51728055; border-radius: 10px; background: #152e3b6b; color: #d5e4e7; text-align: center; overflow: hidden; transition: background .2s, color .2s, border-color .2s, transform .15s; display: grid; grid-template-columns: 28px auto; justify-content: center; column-gap: 11px; align-content: center; row-gap: 5px; }
@@ -203,10 +203,51 @@
 .battle-score { display: flex; justify-content: space-between; font-size: 11px; color: #a1b6ba; margin-bottom: 15px; }
 .battle-score strong { color: #c7f3b3; font-size: 13px; font-weight: 500; }
 .battle-arena.is-paused .battle-actor *, .battle-arena.is-paused .battle-actor, .battle-arena.is-paused .battle-beam, .battle-arena.is-paused .enemy-projectile { animation-play-state: paused !important; }
+/* The support fighter takes a separate lane behind the player's hero. */
+.ally-status { display: flex; gap: 11px; align-items: center; margin: -4px 30px 18px; padding: 10px 13px; border: 1px solid #bdabd52b; border-radius: 9px; background: #ac9acb06; }
+.ally-emblem { color: #c7b5e8; font-size: 25px; line-height: 1; }
+.ally-status > div { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 15px; flex: 1; min-width: 0; }
+.ally-status-name { font-size: 11px; font-weight: 500; color: #d8c9ed; }
+.ally-status-copy { font-size: 10px; color: #9eacba; line-height: 1.6; }
+.ally-status-tag { font-size: 9px; color: #b4a7c6; white-space: nowrap; }
+.ally-status-tag kbd { margin-left: 4px; padding: 1px 4px; border: 1px solid #bba8d95c; border-radius: 3px; font: inherit; }
+.ally-status[data-state="critical"] { border-color: #edcf88aa; background: #f2d2940c; }
+.ally-status[data-state="critical"] .ally-status-name, .ally-status[data-state="critical"] .ally-emblem { color: #ffe0a0; }
+.ally-status[data-state="active"] { background: linear-gradient(100deg, #b9a0f013, #8df5ca09); border-color: #b9a1de69; }
+.battle-arena[data-assist="active"] > .hero-actor { left: 23%; }
+.ally-slot { position: absolute; left: 5%; bottom: 45px; width: 224px; height: 261px; z-index: 2; pointer-events: none; }
+.ally-actor { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 8px 13px #0006); }
+.ally-nameplate { position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); display: flex; gap: 7px; align-items: center; border: 1px solid #c0a8e839; border-radius: 4px; padding: 4px 8px; font-size: 10px; white-space: nowrap; color: #e1d2f4; background: #1e263bd9; }
+.ally-nameplate small { font-size: 6px; letter-spacing: 1px; color: #b3a5c7; }
+.ally-arrival { position: absolute; inset: -40% -10% -5%; background: linear-gradient(90deg, transparent 5%, #cdb8ff35 45%, #faffc659 50%, #cdb8ff35 55%, transparent 95%); clip-path: polygon(35% 0, 65% 0, 100% 100%, 0 100%); opacity: 0; }
+.ally-slot.arriving .ally-arrival { animation: ally-pillar .95s ease-out both; }
+.ally-slot.arriving .ally-actor { animation: ally-land .8s cubic-bezier(.2,.8,.3,1) both; }
+.battle-arena[data-assist="active"] .battle-beam { left: 44%; top: 56%; width: 31%; }
+.ally-beam { position: absolute; z-index: 4; left: 20%; top: 51%; width: 55%; height: 10px; border-radius: 100%; background: #fbf3ff; box-shadow: 0 0 10px #d9c5ff, 0 0 28px #ba8aff9c; opacity: 0; transform-origin: left center; pointer-events: none; }
+.ally-beam::after { content: ''; position: absolute; inset: -6px 0; border-block: 1px solid #d9bdff66; border-radius: inherit; }
+.ally-beam.active { animation: ally-ray .8s ease-out both; }
+.linked-strike .ally-beam { height: 18px; box-shadow: 0 0 16px #e9d9ff, 0 0 45px #a785fa; }
+.battle-beam[data-power="link"] { height: 23px; box-shadow: 0 0 12px #fff, 0 0 35px #a4ffe0; }
+.assist-barrier { position: absolute; z-index: 4; top: 32%; left: 18%; width: 35%; height: 58%; border: 2px solid #d5bfff; background: radial-gradient(ellipse, #c7acff05 45%, #c7acff24); border-radius: 48%; box-shadow: 0 0 24px #cdb8ff25, inset 0 0 25px #cdb8ff25; opacity: 0; transition: opacity .25s; pointer-events: none; }
+.assist-barrier.visible { opacity: .65; }
+.assist-barrier.absorbing { animation: assist-absorb .6s ease-out; }
+.battle-callout.assist-callout { color: #f0dcff; background: #221c38ed; border-color: #ccb3ff88; }
+.damage-number.assist-damage { color: #dbc1ff; margin-left: -28px; }
+.battle-action.assist-action { color: #e2d0fc; border-color: #a894ca66; background: #9c7adb12; }
+.battle-action.assist-action > span { color: #bdb0d0; }
+.battle-action.assist-action.is-ready { border-color: #c7aaff; background: #bf9cff22; }
+.battle-action.assist-action.is-rescue-ready { color: #ffe3a2; border-color: #edce8c; background: #ebbd6b1a; animation: rescue-beacon 1.6s ease-in-out infinite; }
+.battle-result-card .battle-result-assist { color: #d7bfee !important; padding: 0 0 12px; text-align: left; }
+.battle-arena.is-paused .ally-slot *, .battle-arena.is-paused .ally-beam, .battle-arena.is-paused .assist-barrier { animation-play-state: paused !important; }
+@keyframes ally-land { from { opacity: 0; transform: translateY(-90px) scale(.85); } 70% { opacity: 1; transform: translateY(3px) scale(1.02,.98); } to { opacity: 1; transform: none; } }
+@keyframes ally-pillar { 0% { opacity: 0; transform: scaleX(.3); } 20% { opacity: .9; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(.8); } }
+@keyframes ally-ray { 0% { opacity: 0; transform: rotate(var(--ray-angle, 4deg)) scaleX(.1); } 15%, 40% { opacity: 1; transform: rotate(var(--ray-angle, 4deg)) scaleX(1); } 60% { opacity: .85; transform: rotate(var(--ray-angle, 4deg)) scaleX(1) scaleY(1.3); } 100% { opacity: 0; transform: rotate(var(--ray-angle, 4deg)) scaleX(1) scaleY(.2); } }
+@keyframes assist-absorb { 30% { opacity: 1; box-shadow: 0 0 45px #d9bdff80, inset 0 0 30px #d9bdff40; } }
+@keyframes rescue-beacon { 50% { box-shadow: 0 0 20px #eac88935; } }
 @keyframes hero-close-in { 0%, 100% { transform: translateX(0); } 35%, 55% { transform: translateX(75px); } }
 @keyframes monster-rush { 0%, 100% { transform: translateX(0); } 40%, 55% { transform: translateX(-105px); } }
 @keyframes monster-close-in { 0%, 100% { transform: translateX(0); } 40% { transform: translateX(-50px); } }
-@keyframes battle-ray { 0% { opacity: 0; transform: scaleX(.08) scaleY(.3); } 12% { opacity: .98; transform: scaleX(1) scaleY(1); } 27%, 46% { opacity: .88; transform: scaleX(1) scaleY(.65); } 35%, 56% { opacity: 1; transform: scaleX(1) scaleY(1.25); } 100% { opacity: 0; transform: scaleX(1) scaleY(.1); } }
+@keyframes battle-ray { 0% { opacity: 0; transform: rotate(var(--ray-angle, 0rad)) scaleX(.08) scaleY(.3); } 12% { opacity: .98; transform: rotate(var(--ray-angle, 0rad)) scaleX(1) scaleY(1); } 27%, 46% { opacity: .88; transform: rotate(var(--ray-angle, 0rad)) scaleX(1) scaleY(.65); } 35%, 56% { opacity: 1; transform: rotate(var(--ray-angle, 0rad)) scaleX(1) scaleY(1.25); } 100% { opacity: 0; transform: rotate(var(--ray-angle, 0rad)) scaleX(1) scaleY(.1); } }
 @keyframes enemy-ray { 0% { opacity: 0; transform: scaleX(.1); } 22% { opacity: 1; transform: scaleX(1); } 70% { opacity: .5; } 100% { opacity: 0; transform: scaleX(1); } }
 @keyframes impact-ring { 0% { opacity: 1; transform: scale(.2); } 100% { opacity: 0; transform: scale(1.7); } }
 @keyframes damage-rise { 0% { opacity: 0; transform: translateY(15px) scale(.65); } 15% { opacity: 1; transform: translateY(0) scale(1.08); } 65% { opacity: 1; } 100% { opacity: 0; transform: translateY(-50px) scale(.95); } }
@@ -233,6 +274,9 @@
   .battle-action > span { font-size: 9px; }
   .battle-action > kbd { right: 6px; top: 6px; }
   #battle-help { display: none; }
+  .ally-status { margin: -3px 22px 17px; }
+  .ally-slot { width: 184px; height: 215px; left: 1%; bottom: 48px; }
+  .battle-arena[data-assist="active"] > .hero-actor { left: 21%; }
 }
 @media (max-width: 560px) {
   .battle-dialog { width: calc(100vw - 12px); max-height: calc(100dvh - 12px); border-radius: 14px; }
@@ -282,12 +326,12 @@
   .battle-timing .timing-label { font-size: 8px; }
   .battle-timing > p { font-size: 8px; line-height: 1.6; margin-top: 6px; }
   .energy-thresholds { font-size: 7px; }
-  .battle-actions { gap: 5px; }
-  .battle-action { border-radius: 7px; min-height: 85px; gap: 5px; }
+  .battle-actions { gap: 6px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .battle-action { border-radius: 7px; min-height: 62px; gap: 5px; display: grid; grid-template-columns: 22px auto; column-gap: 7px; padding: 10px 5px; }
   .battle-action > svg { width: 21px; height: 21px; }
-  .battle-action strong { font-size: 9px; letter-spacing: 0; }
-  .battle-action > span { font-size: 7px; }
-  .battle-action.is-unavailable > span { font-size: 8px; letter-spacing: -.02em; }
+  .battle-action strong { font-size: 11px; letter-spacing: 0; }
+  .battle-action > span { font-size: 9px; }
+  .battle-action.is-unavailable > span { font-size: 9px; letter-spacing: -.02em; }
   .battle-action-hint { font-size: 10px; min-height: 34px; margin: -4px 0 11px; line-height: 1.7; }
   .battle-action > kbd { font-size: 7px; top: 4px; right: 4px; }
   .battle-log { font-size: 9px; line-height: 1.6; }
@@ -311,6 +355,20 @@
   .battle-result-stats span { font-size: 8px; }
   .battle-score { margin-bottom: 12px; font-size: 10px; }
   .battle-primary { padding: 11px 14px; font-size: 11px !important; }
+  .ally-status { margin: -2px 15px 14px; padding: 8px 9px; gap: 8px; }
+  .ally-status > div { display: block; }
+  .ally-status-name { display: block; font-size: 10px; }
+  .ally-status-copy { display: block; margin-top: 3px; font-size: 9px; }
+  .ally-status-tag { display: none; }
+  .ally-slot { width: 142px; height: 166px; left: 0; bottom: 55px; }
+  .ally-nameplate { font-size: 9px; padding: 3px 6px; bottom: -3px; }
+  .ally-nameplate small { display: none; }
+  .battle-arena[data-assist="active"] > .hero-actor { width: 167px; height: 195px; left: 23%; }
+  .battle-arena[data-assist="active"] > .monster-actor { width: 192px; height: 224px; right: -9%; bottom: 19px; }
+  .battle-arena[data-assist="active"] .battle-beam { left: 53%; top: 64%; width: 26%; }
+  .ally-beam { left: 22%; top: 57%; width: 57%; height: 7px; }
+  .assist-barrier { left: 14%; top: 39%; width: 46%; height: 50%; }
+  .battle-arena[data-assist="active"] .damage-number.hero { left: 39%; }
   @keyframes hero-close-in { 0%, 100% { transform: translateX(0); } 35%, 55% { transform: translateX(35px); } }
   @keyframes monster-rush { 0%, 100% { transform: translateX(0); } 40%, 55% { transform: translateX(-45px); } }
   @keyframes monster-close-in { 0%, 100% { transform: translateX(0); } 40% { transform: translateX(-25px); } }
@@ -319,9 +377,11 @@
   .battle-dialog *, .battle-dialog *::before, .battle-dialog *::after { scroll-behavior: auto !important; transition: none !important; }
   .battle-arena .hero-actor.striking, .battle-arena .monster-actor.rushing, .battle-arena .monster-actor.striking, .battle-arena.damaged { animation: none !important; }
   .battle-arena .hero-actor.low-health .hero-crystal { animation: none !important; }
-  .battle-beam.active { animation: none; opacity: .8; }
+  .battle-beam.active { animation: none; opacity: .8; transform: rotate(var(--ray-angle, 0rad)); }
   .enemy-projectile.active { animation: none; opacity: .6; }
   .battle-impact.active { animation: none; opacity: .7; }
   .damage-number { animation: none; opacity: 1; }
   .battle-arena.ultimate::before { animation: none; }
+  .ally-slot.arriving .ally-actor, .ally-slot.arriving .ally-arrival, .assist-barrier.absorbing, .battle-action.assist-action.is-rescue-ready { animation: none !important; }
+  .ally-beam.active { animation: none; opacity: .8; transform: rotate(var(--ray-angle, 4deg)); }
 }
