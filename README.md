@@ -115,23 +115,58 @@ pet.example.com {
 - 试玩入口：`http://alisg.cloudcpp.com:8787`。
 - Compose 项目：`aoteman`；成长数据库卷：`aoteman_data`。
 
-代码推送后，在服务器上更新：
+每次先在本机完成验证、提交并推送 `main`，用 `git ls-remote origin refs/heads/main` 核对 GitHub 上的完整 SHA。服务器只更新 `/opt/aoteman`；已有工作区不干净或不能快进时，先核对差异，不覆盖本地修改或其他克隆。
+
+在服务器上将 `release_sha` 设为刚才确认的完整 SHA，再更新：
 
 ```sh
+set -eu
+: "${release_sha:?请先设置已确认的完整提交 SHA}"
 cd /opt/aoteman
+test "$(git branch --show-current)" = main
+test -z "$(git status --porcelain)"
 git pull --ff-only origin main
+test "$(git rev-parse HEAD)" = "$release_sha"
 ./deploy.sh
 docker compose ps
 ```
 
-首次部署已迁移本地试玩快照。新网址与 `localhost` 使用不同的浏览器网站数据：在原本地页面的存档设置中保存恢复码，到服务器页面使用同一恢复码，即可接回原来的伙伴。后续服务器与本地属于两个独立数据库，继续在服务器网址游玩；更新服务器时不再重新导入本地快照。
+如果服务器临时无法访问 GitHub，可从本机经 SSH 传送已推送版本的 Git bundle。先确认本机 `main` 干净，且它与 GitHub 的 SHA 一致：
+
+```sh
+set -eu
+test "$(git branch --show-current)" = main
+test -z "$(git status --porcelain)"
+release_sha=$(git rev-parse refs/heads/main)
+test "$release_sha" = "$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+git bundle create "/tmp/aoteman-$release_sha.bundle" refs/heads/main
+scp "/tmp/aoteman-$release_sha.bundle" alisg-cloudcpp:/tmp/
+```
+
+在服务器沿用同一个 `release_sha`，通过 bundle 快进更新并部署：
+
+```sh
+set -eu
+: "${release_sha:?请先设置已确认的完整提交 SHA}"
+cd /opt/aoteman
+test "$(git branch --show-current)" = main
+test -z "$(git status --porcelain)"
+git bundle verify "/tmp/aoteman-$release_sha.bundle"
+git fetch "/tmp/aoteman-$release_sha.bundle" refs/heads/main
+test "$(git rev-parse FETCH_HEAD)" = "$release_sha"
+git merge --ff-only "$release_sha"
+test "$(git rev-parse HEAD)" = "$release_sha"
+./deploy.sh
+docker compose ps
+```
+
+首次部署也可从 bundle 克隆，但必须先确认 `/opt/aoteman` 不存在，并将克隆后的 `origin` 设置为 `https://github.com/cppla/aoteman.git`。bundle 只是代码传输备用方式，不包含实际成长库，也不代替 SQLite 备份和部署检查。
+
+首次迁移本地试玩快照后，新网址与 `localhost` 仍使用不同的浏览器网站数据：在原本地页面的存档设置中保存恢复码，到服务器页面使用同一恢复码，即可接回原来的伙伴。后续以服务器成长库为准；本地和服务器是两个独立数据库，更新服务器时不再导入本地旧快照。部署后需核对运行版本、Web/API 健康、公开入口及存档保留情况，再确认交付。
 
 ## 更新版本，保留成长进度
 
-```sh
-git pull
-./deploy.sh
-```
+按上面的流程取得并核对已推送版本，再运行 `./deploy.sh`。通常使用 `git pull --ff-only origin main`；服务器连接 GitHub 失败时可使用 bundle 备用流程。
 
 `deploy.sh` 会先调用 SQLite 在线备份接口创建 `/data/backups/pre-deploy-<UTC>.sqlite3`，成功后才构建和更新服务。已有 API 容器状态异常时，脚本保留现场并停止；先查看 API 日志与存档，不会自动删库或重建空库。
 
