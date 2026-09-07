@@ -3,7 +3,7 @@ import { sanitizeState, levelInfo } from './pet-state.js';
 const escapeText = value => String(value).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
 const codePattern = /^gxy_[a-f0-9]{64}$/;
 const summary = state => `Lv. ${levelInfo(state.xp).level} · ${state.xp} 经验 · ${state.stars} 星光 · ${state.wins} 次守护`;
-const reasonLabel = reason => ({ initial:'初次保存', gameplay:'陪伴与冒险', autosave:'自动保存', save:'进度更新', import:'导入进度', 'conflict-resolution':'选择保留进度' }[reason] || (/^restore:\d+$/.test(reason || '') ? `恢复自版本 ${reason.split(':')[1]}` : '进度更新'));
+const reasonLabel = reason => ({ initial:'初次保存', gameplay:'陪伴与冒险', autosave:'自动保存', save:'进度更新', import:'导入进度', 'conflict-resolution':'选择保留进度', rename:'伙伴的新名字' }[reason] || (/^milestone:/.test(reason || '') ? '收藏成长礼' : /^restore:\d+$/.test(reason || '') ? `恢复自版本 ${reason.split(':')[1]}` : '进度更新'));
 const timeLabel = value => {
   const date = new Date(typeof value === 'number' && value < 1e12 ? value * 1000 : value);
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleString('zh-CN', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false });

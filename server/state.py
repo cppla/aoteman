@@ -8,10 +8,22 @@ from datetime import datetime
 COUNTERS = ("xp", "stars", "wins", "training", "fed", "blocks", "pats")
 SCENES = ("base", "moon", "sunset")
 MONSTERS = ("obsidian", "lava", "cosmic")
+MILESTONES = ("first_meal", "first_training", "first_guard", "first_victory", "training_routine", "starlight_rank", "new_horizons", "galaxy_guardian")
+# ECMAScript String.trim() whitespace, matching the browser validator exactly.
+NAME_WHITESPACE = "\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
 
 
 class ValidationError(ValueError):
     pass
+
+
+def companion_name(value):
+    if not isinstance(value, str) or any(ord(char) <= 0x1f or 0x7f <= ord(char) <= 0x9f or 0xd800 <= ord(char) <= 0xdfff for char in value):
+        raise ValidationError("名字需要 1–12 个字，不能包含控制字符。")
+    name = value.strip(NAME_WHITESPACE)
+    if not 1 <= len(name) <= 12:
+        raise ValidationError("名字需要 1–12 个字，不能包含控制字符。")
+    return name
 
 
 def number(value, name, minimum=0, maximum=10000000, integer=False):
@@ -31,7 +43,9 @@ def sanitize_state(raw):
     date = datetime.now().strftime("%Y-%m-%d")
     # JavaScript's dayKey deliberately omits month/day leading zeroes.
     date = "-".join(str(int(part)) for part in date.split("-"))
-    state = {"version": 2}
+    state = {"version": 2, "companionName": companion_name(raw.get("companionName", "银河"))}
+    milestones = raw.get("milestones", [])
+    state["milestones"] = list(dict.fromkeys(item for item in milestones if isinstance(item, str) and item in MILESTONES)) if isinstance(milestones, list) else []
     for key in ("food", "energy", "mood"):
         state[key] = number(raw.get(key), key, maximum=100)
     for key in COUNTERS:

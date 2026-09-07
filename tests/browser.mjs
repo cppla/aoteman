@@ -39,6 +39,7 @@ try {
   assert.equal(await page.locator('#petHero').getAttribute('data-pose'), 'defend');
   await page.waitForTimeout(450);
   await page.screenshot({ path: new URL('x-defense-desktop.png', output).pathname, fullPage: true });
+  await page.locator('.dojo-dialog [data-dojo="close"]').first().click();
   await ready(page);
   await page.click('#transformBtn'); await ready(page);
   assert.equal(await page.locator('#transformBtn').getAttribute('aria-pressed'), 'true');

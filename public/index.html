@@ -11,16 +11,18 @@
   <link rel="stylesheet" href="./characters.css">
   <link rel="stylesheet" href="./battle.css">
   <link rel="stylesheet" href="./save-panel.css">
+  <link rel="stylesheet" href="./growth.css">
+  <link rel="stylesheet" href="./defense-dojo.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
   <header class="site-header shell">
     <a class="brand" href="./" aria-label="银河小伙伴首页"><span class="brand-mark" data-icon="spark"></span><span>银河小伙伴<small>GALAXY COMPANION</small></span></a>
-    <nav class="main-nav" aria-label="主导航"><button class="nav-link active" id="baseNav" aria-current="page">星光基地</button><button class="nav-link" id="archiveNav">怪兽档案</button><button class="nav-link" id="journalNav">成长足迹</button></nav>
+    <nav class="main-nav" aria-label="主导航"><button class="nav-link active" id="baseNav" aria-current="page">星光基地</button><button class="nav-link" id="archiveNav">怪兽档案</button><button class="nav-link" id="journeyNav">成长航线</button><button class="nav-link" id="journalNav">成长足迹</button></nav>
     <div class="header-tools"><button class="save-status" id="saveStatus" aria-label="查看存档同步状态" data-status="loading"><i></i>连接存档中</button><button class="icon-button" id="soundBtn" aria-label="开启音效" aria-pressed="false" title="开启音效" data-icon="mute"></button><button class="icon-button" id="settingsBtn" aria-label="存档与设置" title="存档与设置" data-icon="settings"></button></div>
   </header>
   <main class="shell">
-    <section class="welcome"><div><div class="eyebrow"><span></span>YOUR LITTLE HERO, YOUR BIG UNIVERSE</div><h1>小小的光，<em>大大的冒险。</em></h1><p>照顾银河，陪他长大。今天也一起守护这片宇宙。</p></div><div class="companion-day"><span class="day-orbit" data-icon="orbit"></span><div><strong id="dayValue">01</strong><span>天的陪伴</span></div><small>我们的银河故事</small></div></section>
+    <section class="welcome"><div><div class="eyebrow"><span></span>YOUR LITTLE HERO, YOUR BIG UNIVERSE</div><h1>小小的光，<em>大大的冒险。</em></h1><p id="welcomeCopy">照顾银河，陪他长大。今天也一起守护这片宇宙。</p></div><div class="companion-day"><span class="day-orbit" data-icon="orbit"></span><div><strong id="dayValue">01</strong><span>天的陪伴</span></div><small>我们的银河故事</small></div></section>
     <div class="cloud-banner" id="cloudBanner" role="status" hidden><span id="cloudBannerText"></span><button id="cloudBannerBtn">查看存档 ↗</button></div>
     <div class="dashboard">
       <div class="main-column">
@@ -39,11 +41,12 @@
           <button class="care-btn" id="feedBtn"><span class="care-icon" data-icon="food"></span><span><strong>喂点星光</strong><small>饱食 +25 · 活力 +5</small></span><span class="care-arrow">↗</span></button>
           <button class="care-btn" id="trainBtn"><span class="care-icon amber" data-icon="bolt"></span><span><strong>一起特训</strong><small>经验 +20 · 星光 +5</small></span><span class="care-arrow">↗</span></button>
           <button class="care-btn" id="restBtn"><span class="care-icon lilac" data-icon="moon"></span><span><strong id="restTitle">星光休息</strong><small id="restSubtitle">恢复活力，做个好梦</small></span><span class="care-arrow">↗</span></button>
-          <button class="care-btn" id="defendBtn"><span class="care-icon sky" data-icon="shield"></span><span><strong>防御练习</strong><small>双手交叉，守护你</small></span><span class="care-arrow">↗</span></button>
+          <button class="care-btn" id="defendBtn"><span class="care-icon sky" data-icon="shield"></span><span><strong>防御练习</strong><small>免费 3 回合 · 练出完美格挡</small></span><span class="care-arrow">↗</span></button>
         </div>
+        <div class="next-moment"><div><span class="eyebrow">A LITTLE MOMENT TOGETHER</span><h3 id="suggestionTitle">我们的故事，从一颗星光开始</h3><p id="suggestionCopy">喂点星光，让小伙伴认识这位新搭档。</p></div><button id="suggestionBtn">第一次喂食 ↗</button></div>
       </div>
       <aside class="side-column">
-        <section class="status-card panel" aria-label="银河状态"><div class="card-overline">YOUR COMPANION<span class="tiny-star">✧</span></div><div class="pet-heading"><div><h2>银河奥特曼</h2><p id="rankTitle">初生之光 · 你的宇宙搭档</p></div><span class="level-badge" id="levelBadge">LV.<b>1</b></span></div>
+        <section class="status-card panel" aria-label="银河状态"><div class="card-overline">YOUR COMPANION<span class="tiny-star">✧</span></div><div class="pet-heading"><div><h2 id="companionName">银河奥特曼</h2><p id="rankTitle">初生之光 · 你的宇宙搭档</p><button class="rename-companion" id="renameBtn">给伙伴起个昵称 ↗</button></div><span class="level-badge" id="levelBadge">LV.<b>1</b></span></div>
           <div class="vitals">
             <div class="vital"><div><span><i data-icon="food"></i>饱食度</span><b id="foodValue">72<small>/100</small></b></div><div class="meter" id="foodBar" role="progressbar" aria-label="饱食度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="72"><span id="foodFill"></span></div></div>
             <div class="vital"><div><span><i data-icon="bolt"></i>活力</span><b id="energyValue">80<small>/100</small></b></div><div class="meter energy" id="energyBar" role="progressbar" aria-label="活力" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80"><span id="energyFill"></span></div></div>
@@ -55,10 +58,14 @@
         <section class="expedition panel"><div class="card-overline">NEXT ADVENTURE<span class="signal-bars" aria-hidden="true">▂▄▆</span></div><div class="expedition-title"><h2>前线，等你守护。</h2><span class="mission-number">01</span></div><p id="enemyDescription">暗星装甲兽出现在基地外，银河准备好了吗？</p><div class="expedition-options"><label><span>挑战目标</span><select id="monsterSelect" aria-label="挑战怪兽"><option value="obsidian">暗星装甲兽</option><option value="lava">熔岩角兽</option><option value="cosmic">宇宙电光兽</option></select></label><label><span>难度</span><select id="difficultySelect" aria-label="战斗难度"><option value="normal">标准</option><option value="easy">轻松</option></select></label></div><button class="launch-button" id="fightBtn"><span data-icon="swords"></span>出发！守护宇宙<span>↗</span></button><div class="expedition-cost">出发消耗 15 活力 · 10 饱食度</div></section>
       </aside>
     </div>
+    <section class="journey-section" aria-label="成长航线">
+      <div class="journey-heading"><div><span class="eyebrow">LITTLE MILESTONES, LASTING MEMORIES</span><h2>我们的成长航线<span class="journey-count" id="journeyCount">0 / 8</span></h2><p id="journeyCopy">每一颗星光，都在让我们成为更好的搭档。</p></div><button id="journeyBtn">查看成长礼 ↗</button></div>
+      <div class="journey-route" id="journeyRoute" role="group" aria-label="八站成长里程碑"></div>
+    </section>
     <section class="daily-section"><div class="section-heading"><div><span class="eyebrow">LITTLE STEPS, BRIGHTER DAYS</span><h2>今天的星光计划 <span id="missionCount">0 / 3</span></h2></div><span class="daily-reset">每日焕新 · 慢慢来就好</span></div><div class="daily-grid"><div class="daily-task" id="dailyFeed"><span class="task-check"></span><div><strong>好好吃饭</strong><p>给银河喂一次星光</p></div><span class="task-number">01</span></div><div class="daily-task" id="dailyTrain"><span class="task-check"></span><div><strong>一起变强</strong><p>完成一次银河特训</p></div><span class="task-number">02</span></div><div class="daily-task" id="dailyBattle"><span class="task-check"></span><div><strong>勇敢出发</strong><p>完成一场战斗，无论胜负</p></div><span class="task-number">03</span></div><button class="daily-reward" id="claimBtn" disabled><span data-icon="gift"></span><span><strong id="claimTitle">今日星光礼</strong><small id="claimSubtitle">完成计划 · 15 星光 + 25 经验</small></span><span>↗</span></button></div></section>
     <div class="activity-strip"><span class="activity-icon" data-icon="spark"></span><span id="activityText">故事从一颗小小的星光开始。银河正在等你。</span><button id="helpBtn">新搭档指南 <span>↗</span></button></div>
   </main>
-  <footer class="shell site-footer"><span>每一道微小的光，都有自己的银河。</span><span>同人互动作品 <i>·</i> 服务器存档 · 本机备份 <i>·</i> GALAXY / 03</span></footer>
+  <footer class="shell site-footer"><span>每一道微小的光，都有自己的银河。</span><span>同人互动作品 <i>·</i> 服务器存档 · 本机备份 <i>·</i> GALAXY / 04</span></footer>
   <dialog class="app-dialog" id="infoDialog" aria-labelledby="dialogTitle"><div class="dialog-top"><span class="eyebrow" id="dialogEyebrow">GALAXY COMPANION</span><button class="icon-button" id="closeDialog" aria-label="关闭弹窗" data-icon="close"></button></div><h2 id="dialogTitle"></h2><div id="dialogContent"></div></dialog>
   <div class="toast" id="toast" role="status" hidden></div>
   <noscript><div class="no-script">请启用 JavaScript，再和银河一起开启冒险。</div></noscript>

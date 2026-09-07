@@ -1,5 +1,7 @@
 """Discoverable API contract; deliberately no authenticated player listing."""
 
+from .state import MILESTONES
+
 
 def ref(name):
     return {"$ref": "#/components/schemas/" + name}
@@ -15,6 +17,8 @@ def specification():
     milliseconds = {"type": "number", "minimum": 1, "maximum": 8640000000000000, "description": "Unix time in milliseconds; future times are capped at server time."}
     state_properties = {
         "version": {"type": "integer", "enum": [1, 2]},
+        "companionName": {"type": "string", "minLength": 1, "maxLength": 12, "description": "Companion name, trimmed and limited to 12 Unicode code points. Control characters and unpaired surrogates are rejected. Defaults to 银河 for legacy saves; PUT preserves the current name when omitted."},
+        "milestones": {"type": "array", "uniqueItems": True, "maxItems": len(MILESTONES), "items": {"type": "string", "enum": list(MILESTONES)}, "description": "Claimed growth rewards. Only known, distinct IDs are retained. PUT preserves the current list when omitted by an older client."},
         **{key: gauge for key in ("food", "energy", "mood")},
         **{key: counter for key in ("xp", "stars", "wins", "training", "fed", "blocks", "pats")},
         "born": milliseconds, "updated": milliseconds,
@@ -53,7 +57,7 @@ def specification():
 
     create = operation("Create a player or retry an existing creation", ref("Snapshot"), "CreateProfile", public=True, description="Generate the recovery code with a cryptographically secure RNG and save it locally before requesting. Reusing an existing code returns the current snapshot and never overwrites it; the supplied state is ignored for such retries.")
     create["responses"]["201"] = json_response("Player created at revision 1", ref("Snapshot"))
-    save = operation("Save with optimistic concurrency", ref("WriteSnapshot"), "SaveRequest", description="A successful mutation ID is remembered permanently per player. Retrying it returns the current head without writing again, even if baseRevision is now stale. mutationRevision identifies the original successful revision. A new mutation with stale baseRevision returns 409 and the current snapshot; the caller must resolve the conflict.")
+    save = operation("Save with optimistic concurrency", ref("WriteSnapshot"), "SaveRequest", description="A successful mutation ID is remembered permanently per player. Retrying it returns the current head without writing again, even if baseRevision is now stale. mutationRevision identifies the original successful revision. A new mutation with stale baseRevision returns 409 and the current snapshot; the caller must resolve the conflict. Omitted companionName and milestones fields preserve their current values for older v2 clients. Explicit historical restore can recover the earlier values.")
     save["responses"]["409"] = json_response("revision_conflict", ref("Conflict"))
     restore = operation("Restore a retained version as a new revision", ref("WriteSnapshot"), "RestoreRequest", description="Preserves the current head in history, then writes the selected historical state as a new revision. Retains the newest 100 revisions per player; history lists the latest 50. Uses the same concurrency and idempotency rules as PUT /api/v1/save.")
     restore["responses"]["409"] = json_response("revision_conflict", ref("Conflict"))

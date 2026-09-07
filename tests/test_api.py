@@ -26,6 +26,7 @@ with patch.dict(os.environ, {"AOTEMAN_DATA_DIR": _bootstrap.name, "BACKUP_INTERV
     from server.storage import ROOT, SCHEMA_VERSION, Store, connect, make_backup
 application.close()
 _bootstrap.cleanup()
+NAME_FIXTURES = json.loads((Path(__file__).parent / "fixtures" / "growth-names.json").read_text(encoding="utf-8"))
 
 
 def state(xp=0, version=2):
@@ -229,6 +230,87 @@ class APITests(unittest.TestCase):
         self.assertEqual(response["body"]["state"]["version"], 2)
         self.assertEqual(response["body"]["state"]["xp"], 400)
         self.assertEqual(response["body"]["state"]["blocks"], 0)
+        self.assertEqual(response["body"]["state"]["companionName"], "银河")
+        self.assertEqual(response["body"]["state"]["milestones"], [])
+
+    def test_companion_names_share_browser_unicode_validation_and_reject_without_writing(self):
+        self.create(initial=state(100))
+        for invalid in NAME_FIXTURES["invalid"]:
+            with self.subTest(invalid=repr(invalid)):
+                incoming = {**state(), "companionName": invalid}
+                body = {"baseRevision": 1, "mutationId": str(uuid.uuid4()), "state": incoming}
+                # Escaped JSON can carry a lone surrogate; the API must reject
+                # it before it reaches SQLite or the UTF-8 response encoder.
+                response = invoke(self.app, "PUT", "/api/v1/save", token=self.token, raw=json.dumps(body).encode("ascii"))
+                self.assertEqual(response["status"], 400)
+                self.assertEqual(response["body"]["error"]["code"], "invalid_state")
+                self.assertEqual(self.read()["body"]["revision"], 1)
+                self.assertEqual(self.read()["body"]["state"]["xp"], 100)
+        for base, valid in enumerate(NAME_FIXTURES["valid"], start=1):
+            with self.subTest(valid=valid):
+                response = invoke(self.app, "PUT", "/api/v1/save", {"baseRevision": base, "mutationId": str(uuid.uuid4()), "state": {**state(100), "companionName": valid["input"]}}, self.token)
+                self.assertEqual(response["status"], 200)
+                self.assertEqual(response["body"]["state"]["companionName"], valid["name"])
+
+    def test_claimed_milestones_are_bounded_known_and_distinct(self):
+        incoming = {**state(), "milestones": ["first_meal", "first_meal", "__proto__", {}, [], None, "galaxy_guardian"] * 200}
+        response = self.create(initial=incoming)
+        self.assertEqual(response["status"], 201)
+        self.assertEqual(response["body"]["state"]["milestones"], ["first_meal", "galaxy_guardian"])
+        response = invoke(self.app, "PUT", "/api/v1/save", {"baseRevision": 1, "mutationId": str(uuid.uuid4()), "state": {**state(), "milestones": {"first_guard": True}}}, self.token)
+        self.assertEqual(response["status"], 200)
+        self.assertEqual(response["body"]["state"]["milestones"], [])
+
+    def test_older_client_saves_preserve_new_growth_fields_and_earned_rewards(self):
+        initial = {**state(100), "stars": 55, "companionName": "小光", "milestones": ["first_meal", "first_training"]}
+        self.create(initial=initial)
+        old_shape = {**state(120), "stars": 60}
+        self.assertNotIn("companionName", old_shape)
+        self.assertNotIn("milestones", old_shape)
+        response = invoke(self.app, "PUT", "/api/v1/save", {"baseRevision": 1, "mutationId": str(uuid.uuid4()), "state": old_shape}, self.token)
+        self.assertEqual(response["status"], 200)
+        self.assertEqual(response["body"]["state"]["companionName"], "小光")
+        self.assertEqual(response["body"]["state"]["milestones"], initial["milestones"])
+        self.assertEqual(response["body"]["state"]["xp"], 120)
+        self.assertEqual(response["body"]["state"]["stars"], 60)
+        # A new client may change one field while omitting the other.
+        response = invoke(self.app, "PUT", "/api/v1/save", {"baseRevision": 2, "mutationId": str(uuid.uuid4()), "state": {**old_shape, "companionName": "星星"}}, self.token)
+        self.assertEqual(response["body"]["state"]["companionName"], "星星")
+        self.assertEqual(response["body"]["state"]["milestones"], initial["milestones"])
+
+    def test_growth_reward_retry_and_historical_restore_preserve_correct_claim_record(self):
+        self.create(initial={**state(), "companionName": "小光", "milestones": []})
+        mutation = str(uuid.uuid4())
+        reward = {**state(10), "fed": 1, "stars": 5, "companionName": "星星", "milestones": ["first_meal"]}
+        body = {"baseRevision": 1, "mutationId": mutation, "state": reward, "reason": "milestone:first_meal"}
+        for _ in range(2):
+            saved = invoke(self.app, "PUT", "/api/v1/save", body, self.token)
+            self.assertEqual(saved["status"], 200)
+            self.assertEqual(saved["body"]["revision"], 2)
+            self.assertEqual(saved["body"]["state"]["xp"], 10)
+            self.assertEqual(saved["body"]["state"]["stars"], 5)
+            self.assertEqual(saved["body"]["state"]["milestones"], ["first_meal"])
+        restored = invoke(self.app, "POST", "/api/v1/restore", {"baseRevision": 2, "mutationId": str(uuid.uuid4()), "revision": 1}, self.token)
+        self.assertEqual(restored["status"], 200)
+        self.assertEqual(restored["body"]["state"]["companionName"], "小光")
+        self.assertEqual(restored["body"]["state"]["milestones"], [])
+        self.assertEqual(restored["body"]["state"]["xp"], 0)
+        self.assertEqual(restored["body"]["state"]["stars"], 0)
+        restored = invoke(self.app, "POST", "/api/v1/restore", {"baseRevision": 3, "mutationId": str(uuid.uuid4()), "revision": 2}, self.token)
+        self.assertEqual(restored["body"]["state"]["milestones"], ["first_meal"])
+        self.assertEqual(restored["body"]["state"]["xp"], 10)
+        self.assertEqual(restored["body"]["state"]["companionName"], "星星")
+
+    def test_optional_growth_fields_survive_database_restart_without_schema_change(self):
+        initial = {**state(850), "companionName": "小光", "milestones": ["galaxy_guardian", "first_victory"]}
+        self.create(initial=initial)
+        self.app.close()
+        self.app = Application(self.data_dir, start_backups=False)
+        restored = self.read()["body"]["state"]
+        self.assertEqual(restored["companionName"], initial["companionName"])
+        self.assertEqual(restored["milestones"], initial["milestones"])
+        self.assertEqual(restored["xp"], 850)
+        self.assertEqual(SCHEMA_VERSION, 2)
 
     def test_unknown_state_fields_are_removed(self):
         initial = state()

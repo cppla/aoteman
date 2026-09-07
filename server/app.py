@@ -140,7 +140,16 @@ class Application:
                 state = sanitize_state(json.loads(source["state_json"]))
                 reason = "restore:%d" % revision
             else:
-                state = sanitize_state(body.get("state"))
+                incoming = body.get("state")
+                if isinstance(incoming, dict):
+                    # v2 clients predating these optional fields cannot erase
+                    # names or claimed rewards when they save their old shape.
+                    previous_state = json.loads(row["state_json"])
+                    incoming = dict(incoming)
+                    for key in ("companionName", "milestones"):
+                        if key not in incoming and key in previous_state:
+                            incoming[key] = previous_state[key]
+                state = sanitize_state(incoming)
                 reason = body.get("reason", "save")
                 if not isinstance(reason, str) or not 1 <= len(reason) <= 120:
                     raise APIError(400, "invalid_request", "reason 必须是 1–120 字符的说明。")

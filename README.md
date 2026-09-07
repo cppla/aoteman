@@ -6,10 +6,24 @@
 
 ![交叉双臂的 X 防御](docs/screenshots/battle.png)
 
+## 本轮更新 · v4
+
+可以给伙伴起昵称，并沿着 **8 站成长航线**领取一次性的经验和星光奖励。已有的喂食、特训、格挡、胜场、场景和怪兽记录都会计入目标；基地也会根据伙伴当前状态给出照顾建议。
+
+**防御训练场**提供免费三轮演习：看预警、架起 X 双臂、在最后 0.35 秒挑战完美格挡，再查看每轮成绩。训练不消耗资源、不发成长奖励；正式战斗中的防御仍计入成长目标。按 P / Esc 暂停，切到后台或页面停顿也会暂停。
+
+![免费 X 防御训练场](docs/screenshots/dojo.png)
+
+战斗新增三种怪兽的招式简报、光能差额、冷却秒数及战后建议。修复了鼠标点击攻击进入冷却后，键盘数字快捷键丢失焦点的问题。
+
+新字段继续使用兼容的 v2 存档格式，SQLite 结构版本保持 2，无需重建数据库。旧客户端提交的存档没有昵称和里程碑字段时，API 会保留服务器上的这些字段；恢复历史存档则按明确选择恢复。更新照常运行 `./deploy.sh`，升级前会生成数据库快照。
+
 ## 玩法
 
 - **陪伴养成**：喂食、抚摸、休息与特训影响饱食度、活力和心情；升级、出击、完成每日计划可积累成长与星光奖励。
 - **自己的小宇宙**：使用星光解锁场景，收集怪兽图鉴，查看成长记录。
+- **专属伙伴**：在状态卡给伙伴起昵称，通过成长航线领取 8 个目标的奖励。
+- **免费练习**：防御训练场提供三轮普通 / 完美格挡练习，暂停和退出不损失资源。
 - **动态战斗**：奥特曼和怪兽都有待机、攻击、受击和行动动画，可观察怪兽的攻击预警。
 - **X 防御**：双臂交叉在胸前，普通防御减伤 90%；抓准攻击落点完成完美防御，可免受该次伤害。
 - **技能快捷键**：数字 **1–5** 对应战斗技能，**P** 暂停，也支持点击和触摸。
@@ -180,8 +194,14 @@ pnpm test:browser
 # 存档同步浏览器回归，默认连接独立测试服务 http://localhost:8789
 pnpm test:sync-browser
 pnpm test:battle-save
+pnpm test:growth
+pnpm test:dojo
+pnpm test:battle-polish
 # 指定其他隔离测试地址：BASE_URL=http://localhost:8890 pnpm test:sync-browser
 pnpm test:battle-save
+pnpm test:growth
+pnpm test:dojo
+pnpm test:battle-polish
 ```
 
 存档同步回归会创建测试玩家，应连接独立测试数据卷，避免把虚构存档写进日常试玩数据库。例如先用 `PORT=8789 AOTEMAN_VOLUME_NAME=aoteman_sqlite_integration COMPOSE_PROJECT_NAME=aoteman-sqlite-integration ./deploy.sh` 启动隔离服务，再运行 `pnpm test:sync-browser`。
@@ -189,6 +209,8 @@ pnpm test:battle-save
 重点检查旧存档迁移、刷新保留、断线重试、跨标签和跨设备同步、版本冲突、恢复码接回、JSON 导入导出，以及容器重建后存档仍可读取。Playwright 仅用于开发，不进入运行镜像；截图及临时数据写入 Git 忽略的 `test-results/`。
 
 自动测试、隔离容器验证、本地试玩和远程生产环境是不同层级的证据，以实际运行结果为准。
+
+v3 存档验证记录见 [validation-v3.md](docs/validation-v3.md)；本轮成长与训练验证见 [validation-v4.md](docs/validation-v4.md)。
 
 ## 说明
 

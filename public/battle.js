@@ -1,4 +1,4 @@
-import { BattleEngine, MONSTERS, DIFFICULTIES } from './battle-engine.js';
+import { BattleEngine, MONSTERS, DIFFICULTIES, ACTIONS } from './battle-engine.js';
 import { heroSVG, monsterSVG } from './characters.js';
 
 export { MONSTERS };
@@ -6,6 +6,24 @@ export { MONSTERS };
 let activeBattle = null;
 const escapeHTML = (text) => String(text).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const formatTime = (ms) => `${String(Math.floor(ms / 60000)).padStart(2, '0')}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`;
+const cooldownTime = (ms) => (Math.ceil(ms / 100) / 10).toFixed(1);
+const setText = (element, value) => { if (element.textContent !== String(value)) element.textContent = value; };
+
+const BRIEFINGS = {
+  obsidian: { strategy: '重甲动作慢，先出拳积攒光能。看到冲撞预警就收手，格挡后再反击。', skills: [['装甲重击', '抬臂蓄力，X 防御稳住正面'], ['暗星冲撞', '预警较短，别连续贪拳'], ['黑曜震波', '蓄力较长，等绿色末段格挡']] },
+  lava: { strategy: '喷发蓄力很长，但伤害最高。先观察进度条；怪兽生命降至 35% 时，所有攻势会加快。', skills: [['烈焰爪击', '利爪升温后落下，准备格挡'], ['熔核喷发', '本组最强一击，优先防御'], ['燃烧冲撞', '比喷发更快，及时停止出招']] },
+  cosmic: { strategy: '跃迁突袭的预警最短。保留一次防御，等攻击落下后再释放光线。', skills: [['电光射线', '电弧聚拢时开始读秒'], ['跃迁突袭', '短促冲撞，看见预警就准备'], ['超新星脉冲', '蓄力较长，练习末段完美格挡']] },
+};
+
+function reviewBattle(result) {
+  const taken = result.damageTaken || 0;
+  if (taken > 0 && result.blocks === 0 && result.dodges === 0) return `本次承受了 ${taken} 点伤害，还没有成功防御。下次橙色预警出现时先点「X 防御」，保持到冲击结束再出拳。`;
+  if (result.blocks > result.perfects) return `本次挡住 ${result.blocks} 次攻击，其中 ${result.perfects} 次完美。下一次试着在进度条进入绿色末段时点「X 防御」，可免伤并获得 24 光能。`;
+  if (taken > 0) return `本次最高 ${result.maxCombo} 连击，但仍承受了 ${taken} 点伤害。下次预警时先停手，防御架起后不要出拳，避免解除防御后被击中、中断连击。`;
+  if (result.perfects > 0) return `本次 ${result.perfects} 次完美格挡、${result.maxCombo} 连击，全程没有受伤。${result.specials > 0 ? '下一次在绿色攻击时机释放「银河终结」，让终结技也获得精准加成。' : '下一次把格挡获得的光能攒到 100，试试「银河终结」。'}`;
+  if (result.maxCombo > 0) return `本次最高 ${result.maxCombo} 连击，没有受伤。下一次等攻击时机游标进入绿色区域再出拳，每次精准命中可多造成 35% 伤害。`;
+  return '下次先用「银河拳」积攒光能；出现橙色预警就点「X 防御」，熟悉一轮攻防后再释放光线。';
+}
 
 const icons = {
   punch: '<path d="M7 12V6a2 2 0 0 1 4 0v4-6a2 2 0 0 1 4 0v6-4a2 2 0 0 1 4 0v7c0 4-2 7-6 7h-2c-2 0-3-1-4-3l-3-5a2 2 0 0 1 3-2l3 3"/>',
@@ -27,7 +45,7 @@ function ensureStyles() {
 }
 
 /** Open a self-contained, keyboard- and touch-accessible combat dialog. */
-export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', onResult, onComplete, onSound } = {}) {
+export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', heroName = '', onResult, onComplete, onSound } = {}) {
   if (activeBattle) {
     activeBattle.dialog.focus();
     return activeBattle.handle;
@@ -41,6 +59,10 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', onRe
   };
   const engine = new BattleEngine({ monsterId, difficulty, onFinish: notifyResult });
   const monster = engine.monster;
+  const briefing = BRIEFINGS[monster.id];
+  const name = Array.from(String(heroName || '').trim()).slice(0, 24).join('') || '光之守护者';
+  const escapedName = escapeHTML(name);
+  const returnFocus = document.activeElement;
   engine.setPaused(true);
   const dialog = document.createElement('dialog');
   dialog.className = 'battle-dialog';
@@ -54,7 +76,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', onRe
         <div class="battle-toolbar"><span class="battle-clock" aria-label="战斗时间">00:00</span><button type="button" class="battle-icon-button" data-command="pause" aria-label="暂停战斗" title="暂停 / 继续（P）" disabled>Ⅱ</button><button type="button" class="battle-icon-button battle-exit" data-command="retreat" aria-label="撤回基地" title="撤回基地">×</button></div>
       </header>
       <div class="battle-hud">
-        <div class="fighter-hud hero-hud"><div class="fighter-meta"><span><i class="status-light"></i> 光之守护者</span><small>ULTRAMAN</small></div><div class="battle-health" role="progressbar" aria-label="奥特曼生命值" aria-valuemin="0" aria-valuemax="${engine.state.heroMaxHp}" aria-valuenow="${engine.state.heroHp}"><span class="health-fill hero-health-fill"></span></div><div class="fighter-foot"><span class="hero-health-number">${engine.state.heroHp} / ${engine.state.heroMaxHp}</span><span class="hero-status">守护之光 · 就绪</span></div></div>
+        <div class="fighter-hud hero-hud"><div class="fighter-meta"><span class="battle-hero-name" title="${escapedName}"><i class="status-light"></i> ${escapedName}</span><small>ULTRAMAN</small></div><div class="battle-health" role="progressbar" aria-label="${escapedName}生命值" aria-valuemin="0" aria-valuemax="${engine.state.heroMaxHp}" aria-valuenow="${engine.state.heroHp}"><span class="health-fill hero-health-fill"></span></div><div class="fighter-foot"><span class="hero-health-number">${engine.state.heroHp} / ${engine.state.heroMaxHp}</span><span class="hero-status">守护之光 · 就绪</span></div></div>
         <div class="battle-vs">VS</div>
         <div class="fighter-hud enemy-hud"><div class="fighter-meta"><span>${escapeHTML(monster.name)}</span><small>THREAT ${monster.threat}</small></div><div class="battle-health" role="progressbar" aria-label="怪兽生命值" aria-valuemin="0" aria-valuemax="${monster.hp}" aria-valuenow="${monster.hp}"><span class="health-fill enemy-health-fill"></span></div><div class="fighter-foot"><span class="monster-health-number">${monster.hp} / ${monster.hp}</span><span class="monster-status">${escapeHTML(monster.subtitle)}</span></div></div>
       </div>
@@ -64,18 +86,19 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', onRe
         <div class="battle-combo" aria-live="off"><b>0</b><span>连击 <small>COMBO</small></span></div>
         <svg class="battle-city" viewBox="0 0 1200 300" preserveAspectRatio="none" aria-hidden="true"><defs><pattern id="battle-windows" width="18" height="24" patternUnits="userSpaceOnUse"><rect x="5" y="6" width="3" height="5" fill="#648895" opacity=".32"/></pattern></defs><path d="M0 300V140h50v-45h52v80h32V68h64v102h40V120h48v65h34V74h28V38h16v36h32v104h36V136h60v64h40V98h58v50h30V76h50v98h38V126h54v53h28V99h36V39h12v60h35v109h43V141h44v31h34V84h53v93h22v-52h49v82h25V113h65V74h42v92h52V300Z" fill="#112b38"/><path d="M0 300V140h50v-45h52v80h32V68h64v102h40V120h48v65h34V74h28V38h16v36h32v104h36V136h60v64h40V98h58v50h30V76h50v98h38V126h54v53h28V99h36V39h12v60h35v109h43V141h44v31h34V84h53v93h22v-52h49v82h25V113h65V74h42v92h52V300Z" fill="url(#battle-windows)"/><path d="M0 300v-60h89v-28h84v31h54v-58h76v54h92v-35h71v30h129v-43h83v58h82v-63h70v45h96v-34h80v49h81v-60h67v114Z" fill="#0a202c"/></svg>
         <div class="arena-ground" aria-hidden="true"></div>
-        <div class="battle-actor actor hero-actor" data-pose="idle" aria-label="奥特曼">${heroSVG('battle-hero')}</div>
+        <div class="battle-actor actor hero-actor" data-pose="idle" aria-label="${escapedName}">${heroSVG('battle-hero')}</div>
         <div class="battle-actor actor monster-actor" data-pose="idle" data-monster="${monster.id}" aria-label="${escapeHTML(monster.name)}">${monsterSVG(monster.id, 'battle-monster')}</div>
         <div class="battle-beam" aria-hidden="true"></div><div class="enemy-projectile" aria-hidden="true"></div><div class="battle-impact" aria-hidden="true"></div>
         <div class="damage-numbers" aria-hidden="true"></div><div class="battle-callout" aria-hidden="true"></div>
         <div class="arena-bottom-label"><span><i></i> LIVE COMBAT</span><span>光芒，因守护而存在。</span></div>
-        <div class="battle-overlay ready-overlay"><div class="battle-overlay-card"><p class="battle-eyebrow">PROTECT WHAT MATTERS</p><h3>这一次，由你守护。</h3><p>重拳积攒光能，光线击退怪兽。<br>看到橙色预警，按 <kbd>4</kbd> 摆出 X 防御。</p><div class="battle-ready-tip">预警最后一段格挡 → 免伤 +24 光能</div><button type="button" class="battle-primary" data-command="start">开始守护 <span>↗</span></button></div></div>
+        <div class="battle-overlay ready-overlay"><div class="battle-overlay-card battle-ready-card"><p class="battle-eyebrow">THREAT BRIEFING · ${escapeHTML(monster.name)}</p><h3 title="${escapedName}，准备守护。">${escapedName}，准备守护。</h3><p class="battle-strategy">${escapeHTML(briefing.strategy)}</p><ul class="battle-skill-brief">${briefing.skills.map(([skill, hint]) => `<li><strong>${escapeHTML(skill)}</strong><span>${escapeHTML(hint)}</span></li>`).join('')}</ul><div class="battle-ready-tip">点「X 防御」或按 <kbd>4</kbd> · 绿色末段格挡：免伤 +24 光能</div><button type="button" class="battle-primary" data-command="start">开始守护 <span>↗</span></button></div></div>
         <div class="battle-overlay pause-overlay" hidden><div class="battle-overlay-card"><p class="battle-eyebrow">TAKE A BREATH</p><h3>光芒暂歇</h3><p class="pause-reason">战斗已暂停，所有计时已冻结。</p><button type="button" class="battle-primary" data-command="resume">继续战斗 <span>▶</span></button><button type="button" class="battle-text-button" data-command="retreat">撤回基地</button></div></div>
         <div class="battle-overlay result-overlay" hidden></div>
       </div>
       <div class="battle-console">
         <div class="battle-instruments"><div class="battle-energy"><div class="instrument-label"><span>光能储备 <small>LIGHT ENERGY</small></span><b><span class="energy-number">0</span><small> / 100</small></b></div><div class="energy-track" role="progressbar" aria-label="光能储备" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span><i style="left:30%"></i><i style="left:100%"></i></div><div class="energy-thresholds"><span>重拳 +9</span><span>光线 30</span><span>银河终结 100</span></div></div>
         <div class="battle-timing"><div class="instrument-label"><span>攻击时机 <small>PRECISION</small></span><b class="timing-label">等待好时机</b></div><div class="timing-track"><span class="timing-sweetspot"></span><i class="timing-cursor"></i></div><p>游标进入绿色区域出招，伤害 +35%</p></div></div>
+        <p class="battle-action-hint">先观察怪兽招式，再开始守护。</p>
         <div class="battle-actions" role="group" aria-label="战斗操作">
           <button type="button" class="battle-action" data-action="punch" aria-keyshortcuts="1" title="重拳积攒 9 光能；精准出招再加 4 光能"><kbd>1</kbd>${icon('punch')}<strong>银河拳</strong><span>+9 光能</span><i class="action-cooldown"></i></button>
           <button type="button" class="battle-action" data-action="beam" aria-keyshortcuts="2" title="消耗 30 光能，释放银河光线"><kbd>2</kbd>${icon('beam')}<strong>银河光线</strong><span>消耗 30</span><i class="action-cooldown"></i></button>
@@ -105,7 +128,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', onRe
     pause: $('[data-command="pause"]'), readyOverlay: $('.ready-overlay'), pauseOverlay: $('.pause-overlay'),
     resultOverlay: $('.result-overlay'), log: $('.battle-log'), callout: $('.battle-callout'),
     beam: $('.battle-beam'), projectile: $('.enemy-projectile'), impact: $('.battle-impact'),
-    actions: [...dialog.querySelectorAll('[data-action]')],
+    actions: [...dialog.querySelectorAll('[data-action]')], actionHint: $('.battle-action-hint'),
   };
   let started = false;
   let closed = false;
@@ -114,6 +137,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', onRe
   let frameId = 0;
   let lastFrame = performance.now();
   let lastWarning = '';
+  let lastPerfectWarning = '';
   const timers = new Set();
   const later = (callback, ms) => {
     const id = setTimeout(() => { timers.delete(id); if (!closed) callback(); }, ms);
@@ -137,7 +161,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', onRe
   function announce(message) {
     if (!message) return;
     if (logTimer) { clearTimeout(logTimer); timers.delete(logTimer); }
-    elements.log.textContent = message;
+    setText(elements.log, message);
   }
 
   function callout(text, kind = '') {
@@ -203,6 +227,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', onRe
 
   function render() {
     const s = engine.snapshot();
+    const focusedAction = elements.actions.includes(document.activeElement) ? document.activeElement : null;
     elements.hero.dataset.pose = s.heroPose;
     elements.monster.dataset.pose = s.monsterPose;
     elements.arena.dataset.enraged = s.enraged ? 'true' : 'false';
@@ -238,35 +263,55 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', onRe
       const key = `${attack.id}-${attack.startedAt}`;
       if (key !== lastWarning) {
         lastWarning = key;
-        elements.warningTitle.textContent = attack.name;
-        elements.warningCopy.textContent = attack.hint;
+        setText(elements.warningTitle, attack.name);
       }
       const elapsedFraction = 1 - s.attackRemaining / attack.windup;
-      elements.warningTime.textContent = `${(s.attackRemaining / 1000).toFixed(1)}s`;
+      setText(elements.warningTime, `${(s.attackRemaining / 1000).toFixed(1)}s`);
       elements.warningFill.style.width = `${elapsedFraction * 100}%`;
       elements.perfectZone.style.width = `${s.perfectWindow / attack.windup * 100}%`;
       elements.warning.classList.add('is-warning');
       elements.warning.classList.toggle('is-perfect-window', s.attackRemaining <= s.perfectWindow);
-      elements.warningCopy.textContent = s.attackRemaining <= s.perfectWindow ? s.defending ? '保持防御，冲击即将到来' : '现在按 4！完美格挡时机' : attack.hint;
+      const perfectWindow = s.attackRemaining <= s.perfectWindow;
+      setText(elements.warningCopy, s.defending ? '保持防御，出拳会解除防御' : perfectWindow ? '现在点 X 防御！完美格挡时机' : attack.hint);
+      // Countdown stays outside live regions. Announce the timing transition
+      // once per attack, never on every animation frame or tenth of a second.
+      if (started && !s.paused && perfectWindow && lastPerfectWarning !== key) {
+        lastPerfectWarning = key;
+        if (!s.defending) announce('现在点 X 防御，或按 4：完美格挡时机！');
+      }
     } else {
       lastWarning = '';
       elements.warning.classList.remove('is-warning', 'is-perfect-window');
-      elements.warningTitle.textContent = !started ? '守护城市，光芒集结' : s.status === 'ended' ? '本次行动结束' : '进攻窗口 · 积攒光能';
-      elements.warningCopy.textContent = !started ? '观察攻击预警，双臂交叉抵挡冲击' : s.status === 'ended' ? '守护的每一步，都值得铭记' : '在绿色时机区出拳，让每次攻击更有力量';
-      elements.warningTime.textContent = !started ? 'READY' : s.status === 'ended' ? 'END' : 'ATTACK';
+      setText(elements.warningTitle, !started ? '守护城市，光芒集结' : s.status === 'ended' ? '本次行动结束' : s.defending ? 'X 防御已架起 · 等待冲击' : '进攻窗口 · 积攒光能');
+      setText(elements.warningCopy, !started ? '观察攻击预警，双臂交叉抵挡冲击' : s.status === 'ended' ? '守护的每一步，都值得铭记' : s.defending ? '等下一次冲击结束，再出招反击' : '在绿色时机区出拳，让每次攻击更有力量');
+      setText(elements.warningTime, !started ? 'READY' : s.status === 'ended' ? 'END' : 'ATTACK');
       elements.warningFill.style.width = '0%';
     }
+    const hint = !started ? '先观察怪兽招式，再开始守护。' : s.status === 'ended' ? '行动完成，查看本次复盘。' : s.paused ? '战斗已暂停，所有技能计时冻结。' : s.defending ? '已架起 X 防御，等冲击落下；出拳或闪避会解除防御。' : s.currentAttack ? s.attackRemaining <= s.perfectWindow ? '现在点「X 防御」！绿色末段可完美格挡。' : '橙色预警：点「X 防御」稳住，也可以等绿色末段再格挡。' : s.cooldown > 0 ? '攻击正在冷却，读秒结束后再出招；X 防御随时可用。' : s.energy >= 100 ? '光能已满！点「银河终结」释放必杀技。' : s.energy >= 30 ? '光线已就绪；也可以继续攒到 100 光能使用终结技。' : '点「银河拳」积攒光能，达到 30 后可释放光线。';
+    setText(elements.actionHint, hint);
+    elements.actionHint.dataset.tone = s.currentAttack || s.defending ? 'guard' : 'attack';
     for (const button of elements.actions) {
       const action = button.dataset.action;
-      const cost = action === 'beam' ? 30 : action === 'special' ? 100 : 0;
+      const cost = ACTIONS[action]?.cost || 0;
       const cooldown = action === 'dodge' ? s.dodgeCooldown : ['punch', 'beam', 'special'].includes(action) ? s.cooldown : 0;
+      const shortfall = Math.max(0, Math.ceil(cost - s.energy));
       button.disabled = !started || s.paused || s.status !== 'active' || s.energy < cost || cooldown > 0 || (action === 'defend' && s.defending);
       button.classList.toggle('is-guarding', action === 'defend' && s.defending);
-      button.classList.toggle('is-ready', action === 'special' && s.energy >= 100 && s.status === 'active');
+      button.classList.toggle('is-ready', action === 'special' && !button.disabled);
       button.classList.toggle('is-recommended', action === 'defend' && !!s.currentAttack && !s.defending);
+      button.classList.toggle('is-unavailable', started && !s.paused && s.status === 'active' && (shortfall > 0 || cooldown > 0));
       button.querySelector('.action-cooldown').style.transform = `scaleX(${Math.min(1, cooldown / (action === 'dodge' ? 2100 : 1500))})`;
-      if (action === 'defend') button.querySelector('span').textContent = s.defending ? '防御已架起' : s.currentAttack && s.attackRemaining <= s.perfectWindow ? '现在！完美格挡' : '减伤 90%';
+      let label = action === 'defend' ? s.defending ? '防御已架起' : s.currentAttack && s.attackRemaining <= s.perfectWindow ? '现在！完美格挡' : '减伤 90%' : action === 'dodge' ? '免伤 0.48 秒' : action === 'punch' ? '+9 光能' : `消耗 ${cost}`;
+      if (cooldown > 0) label = `冷却 ${cooldownTime(cooldown)}s`;
+      else if (shortfall > 0) label = `还差 ${shortfall} 光能`;
+      setText(button.querySelector('span'), label);
+      const availability = [cooldown > 0 ? `冷却还剩 ${cooldownTime(cooldown)} 秒` : '', shortfall > 0 ? `还差 ${shortfall} 光能` : ''].filter(Boolean).join('，');
+      const accessibleLabel = `${button.querySelector('strong').textContent}，${availability || label}`;
+      if (button.getAttribute('aria-label') !== accessibleLabel) button.setAttribute('aria-label', accessibleLabel);
     }
+    // Native disabled buttons lose focus immediately. Keep numeric shortcuts
+    // inside the dialog after a mouse/touch action starts its cooldown.
+    if (focusedAction?.disabled) dialog.focus({ preventScroll: true });
   }
 
   function showResult() {
@@ -278,7 +323,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', onRe
     const title = won ? '城市已被守护。' : result.outcome === 'lose' ? '英雄，也需要休息。' : '平安归来，光芒仍在。';
     const description = won ? `${monster.name}已被击退。每一份勇气，都让光更明亮。` : result.outcome === 'lose' ? '回基地补充能量。下次看到攻击预警，试试 X 防御。' : '调整状态，再一次出发。你的伙伴在基地等你。';
     const rewards = won ? '经验 +40 · 星光 +20' : result.outcome === 'lose' ? '勇气经验 +5' : '撤退不发放奖励';
-    elements.resultOverlay.innerHTML = `<div class="battle-overlay-card battle-result-card"><div class="battle-result-mark ${won ? 'is-win' : ''}">${won ? '✧' : result.outcome === 'lose' ? '◇' : '↗'}</div><p class="battle-eyebrow">${won ? 'MISSION COMPLETE' : result.outcome === 'lose' ? 'LIGHT WILL RETURN' : 'RETURN TO BASE'}</p><h3>${title}</h3><p>${escapeHTML(description)}</p><div class="battle-result-stats"><div><strong>${won ? result.rank : '—'}</strong><span>行动评价</span></div><div><strong>${result.perfects}<small> / ${result.blocks}</small></strong><span>完美 / 总格挡</span></div><div><strong>${result.maxCombo}</strong><span>最高连击</span></div><div><strong>${formatTime(result.elapsed)}</strong><span>战斗用时</span></div></div><div class="battle-score"><span>本次收获</span><strong>${rewards}</strong></div><button type="button" class="battle-primary" data-command="close">返回光之基地 <span>↗</span></button></div>`;
+    elements.resultOverlay.innerHTML = `<div class="battle-overlay-card battle-result-card"><div class="battle-result-mark ${won ? 'is-win' : ''}">${won ? '✧' : result.outcome === 'lose' ? '◇' : '↗'}</div><p class="battle-eyebrow">${won ? 'MISSION COMPLETE' : result.outcome === 'lose' ? 'LIGHT WILL RETURN' : 'RETURN TO BASE'}</p><h3>${title}</h3><p>${escapeHTML(description)}</p><div class="battle-result-stats"><div><strong>${won ? result.rank : '—'}</strong><span>行动评价</span></div><div><strong>${result.perfects}<small> / ${result.blocks}</small></strong><span>完美 / 总格挡</span></div><div><strong>${result.maxCombo}</strong><span>最高连击</span></div><div><strong>${formatTime(result.elapsed)}</strong><span>战斗用时</span></div></div><div class="battle-review"><strong>下次试试</strong><p>${escapeHTML(reviewBattle(result))}</p></div><div class="battle-score"><span>本次收获</span><strong>${rewards}</strong></div><button type="button" class="battle-primary" data-command="close">返回光之基地 <span>↗</span></button></div>`;
     elements.readyOverlay.hidden = true;
     elements.pauseOverlay.hidden = true;
     elements.resultOverlay.hidden = false;
@@ -338,12 +383,15 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', onRe
       settled = true;
       onComplete?.(result);
     }
+    if (returnFocus?.isConnected && !returnFocus.disabled) returnFocus.focus({ preventScroll: true });
   }
 
   function action(name) {
     const result = engine.act(name);
-    if (!result.ok && result.reason === 'energy') announce(`光能不足：需要 ${result.required} 点。先用重拳或格挡积攒光能。`);
+    const s = engine.snapshot();
     processEvents();
+    if (!result.ok && result.reason === 'energy') announce(`光能还差 ${Math.ceil(result.required - s.energy)} 点。先用重拳或格挡积攒光能。`);
+    else if (!result.ok && ['cooldown', 'dodge-cooldown'].includes(result.reason)) announce(`技能冷却还剩 ${cooldownTime(result.reason === 'dodge-cooldown' ? s.dodgeCooldown : s.cooldown)} 秒。`);
     render();
   }
 
@@ -373,8 +421,9 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', onRe
     if (command === 'close') close();
   });
   dialog.addEventListener('keydown', (event) => {
-    if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return;
+    if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing || event.target.closest('input, select, textarea, [contenteditable="true"]')) return;
     const actions = { '1': 'punch', '2': 'beam', '3': 'special', '4': 'defend', '5': 'dodge' };
+    if (event.repeat && (actions[event.key] || event.key.toLowerCase() === 'p')) { event.preventDefault(); return; }
     if (actions[event.key]) { event.preventDefault(); if (started) action(actions[event.key]); }
     else if (event.key.toLowerCase() === 'p') { event.preventDefault(); engine.state.paused ? resume() : pause(); }
   });
