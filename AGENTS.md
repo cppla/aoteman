@@ -5,6 +5,8 @@
 1. 完成相关验证，提交修改并推送 GitHub `cppla/aoteman` 的 `main` 分支；核对 GitHub 上的完整提交 SHA 与本次待部署版本一致。
 2. 以 Docker 方式部署或更新到 `alisg.cloudcpp.com`，服务器项目目录为 `/data/aoteman`，Compose 项目名为 `aoteman`。
 
+试玩统一使用服务器 `http://alisg.cloudcpp.com:8787`。后续更新不再在本机创建、启动或更新 Docker 容器；本地保留代码编辑和必要验证，验证优先使用无需 Docker 的方式。
+
 本机已配置 SSH 别名 `alisg-cloudcpp`，对应 `root@alisg.cloudcpp.com:24`。其他机器应使用自己的授权连接方式；不要把密钥、密码或恢复码写入仓库。
 
 - 部署前核对目标主机、Git 分支和工作区，保留非本次任务的改动。服务器有未提交修改或不能快进时，先查明差异。
