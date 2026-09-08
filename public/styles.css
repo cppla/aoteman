@@ -8,3 +8,24 @@
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}.reward-float{animation:none;opacity:1}}
 
 .expedition-assist-tip { margin: 9px 0 0; text-align: center; font-size: 10px; line-height: 1.6; color: #bba6ce; }
+
+/* Touch controls remain comfortably tappable; pinch-to-zoom stays available. */
+button, select, input { touch-action: manipulation; }
+.icon-button, .scene-switch, .transform-button, .dialog-button, .launch-button, .expedition-options select { min-height: 44px; }
+.header-tools .icon-button, .icon-button { min-width: 44px; }
+.shell { padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+@media (pointer: coarse) {
+  .nav-link { min-height: 44px; }
+  .care-btn, .daily-reward { min-height: 76px; }
+  .care-btn:not(:disabled):hover, .battle-action:not(:disabled):hover { transform: none; }
+  .expedition-options select, .settings-block input { font-size: 16px; }
+}
+@media (min-width: 761px) and (max-width: 900px) {
+  .dashboard { grid-template-columns: minmax(0, 1fr) 280px; }
+  .habitat { height: 500px; }
+  .speech { max-width: calc(100% - 30px); min-width: 0; white-space: normal; text-align: center; }
+  .care-actions { gap: 9px; }
+  .care-btn { padding: 13px 10px; }
+  .care-btn small { font-size: 9px; }
+}
+@media (max-width: 400px) { .shell { padding-left: max(15px, env(safe-area-inset-left)); padding-right: max(15px, env(safe-area-inset-right)); } }

@@ -20,7 +20,12 @@ export const ACTIONS = Object.freeze({
 export const ASSIST_RULES = Object.freeze({
   name: '迪迦', hpThreshold: 0.3, minEnergy: 10, healRatio: 0.25,
   shieldDuration: 3000, attackInterval: 2400, arrivalDelay: 800,
-  linkCost: 30, linkDamage: 54, linkCooldown: 8000,
+  linkCost: 30, linkDamage: 84, linkCooldown: 8000,
+});
+
+export const SECOND_ALLY_RULES = Object.freeze({
+  id: 'zero', name: '赛罗', arrivalDelay: 1100, attackInterval: 2800,
+  punchDamage: 14, beamDamage: 20,
 });
 
 const ATTACKS = Object.freeze({
@@ -58,6 +63,8 @@ export class BattleEngine {
     this.monsterPoseUntil = 0;
     this.allyPoseUntil = 0;
     this.allyAttackIndex = 0;
+    this.secondAllyPoseUntil = 0;
+    this.secondAllyAttackIndex = 0;
     this.state = {
       status: 'active', paused: false, elapsed: 0, heroHp: this.rules.heroHp,
       heroMaxHp: this.rules.heroHp, monsterHp: this.monster.hp, monsterMaxHp: this.monster.hp,
@@ -65,7 +72,8 @@ export class BattleEngine {
       defending: false, dodgeUntil: 0, dodgeReadyAt: 0, readyAt: 0, currentAttack: null,
       nextAttackAt: 1500, enraged: false, result: null,
       ally: { summoned: false, active: false, pose: 'idle', shieldUntil: 0, nextAttackAt: 0, linkReadyAt: 0 },
-      stats: { punches: 0, beams: 0, specials: 0, blocks: 0, perfects: 0, dodges: 0, precisionHits: 0, damageDealt: 0, damageTaken: 0, summons: 0, allyHits: 0, allyDamage: 0, linkAttacks: 0 },
+      secondAlly: { active: false, pose: 'idle', nextAttackAt: 0 },
+      stats: { punches: 0, beams: 0, specials: 0, blocks: 0, perfects: 0, dodges: 0, precisionHits: 0, damageDealt: 0, damageTaken: 0, summons: 0, allyHits: 0, allyDamage: 0, tigaHits: 0, zeroHits: 0, tigaDamage: 0, zeroDamage: 0, linkAttacks: 0 },
     };
     this.emit('start', { message: `${this.monster.name}出现了。观察预警，守护城市！` });
   }
@@ -74,7 +82,7 @@ export class BattleEngine {
     const s = this.state;
     const attack = s.currentAttack;
     return {
-      ...s, stats: { ...s.stats }, ally: { ...s.ally }, currentAttack: attack ? { ...attack } : null,
+      ...s, stats: { ...s.stats }, ally: { ...s.ally }, secondAlly: { ...s.secondAlly }, currentAttack: attack ? { ...attack } : null,
       result: s.result ? { ...s.result } : null,
       timing: (s.elapsed % 1800) / 1800,
       cooldown: Math.max(0, s.readyAt - s.elapsed),
@@ -110,14 +118,17 @@ export class BattleEngine {
     if (s.status !== 'active' || s.paused || !Number.isFinite(deltaMs) || deltaMs <= 0) return this.snapshot();
     const target = s.elapsed + deltaMs;
     // Process every boundary, regardless of frame size. At equal deadlines the
-    // ally attacks first, so a rescuing final hit can stop a lethal enemy strike.
+    // allies attack in arrival order (Tiga, Zero), then the monster. Either
+    // rescuer's final hit can stop a lethal enemy strike on the same boundary.
     while (s.status === 'active') {
       const enemyDeadline = s.currentAttack ? s.currentAttack.strikesAt : s.nextAttackAt;
       const allyDeadline = s.ally.active ? s.ally.nextAttackAt : Infinity;
-      const deadline = Math.min(enemyDeadline, allyDeadline);
+      const secondAllyDeadline = s.secondAlly.active ? s.secondAlly.nextAttackAt : Infinity;
+      const deadline = Math.min(enemyDeadline, allyDeadline, secondAllyDeadline);
       if (deadline > target) break;
       s.elapsed = deadline;
-      if (allyDeadline <= enemyDeadline) this.resolveAllyAttack();
+      if (allyDeadline === deadline) this.resolveAllyAttack('tiga');
+      else if (secondAllyDeadline === deadline) this.resolveAllyAttack('zero');
       else if (s.currentAttack) this.resolveEnemyAttack();
       else this.startEnemyAttack();
     }
@@ -135,6 +146,7 @@ export class BattleEngine {
     if (s.currentAttack) s.monsterPose = 'charge';
     else if (this.monsterPoseUntil <= s.elapsed) s.monsterPose = 'idle';
     if (s.ally.active && this.allyPoseUntil <= s.elapsed) s.ally.pose = 'idle';
+    if (s.secondAlly.active && this.secondAllyPoseUntil <= s.elapsed) s.secondAlly.pose = 'idle';
   }
 
   startEnemyAttack() {
@@ -254,27 +266,39 @@ export class BattleEngine {
       nextAttackAt: s.elapsed + ASSIST_RULES.arrivalDelay, linkReadyAt: 0,
     });
     this.allyPoseUntil = s.elapsed + ASSIST_RULES.arrivalDelay;
-    this.emit('summon', { heal, energySpent, interruptedAttack, message: `最后的光能回应了呼唤！${ASSIST_RULES.name}登场 · 生命 +${heal} · 光之护盾 3 秒` });
+    Object.assign(s.secondAlly, {
+      active: true, pose: 'transform', nextAttackAt: s.elapsed + SECOND_ALLY_RULES.arrivalDelay,
+    });
+    this.secondAllyPoseUntil = s.elapsed + SECOND_ALLY_RULES.arrivalDelay;
+    this.emit('summon', { heal, energySpent, interruptedAttack, message: `最后的光能回应了呼唤！${ASSIST_RULES.name}与${SECOND_ALLY_RULES.name}登场 · 生命 +${heal} · 光之护盾 3 秒` });
     return { ok: true, heal, energySpent };
   }
 
-  resolveAllyAttack() {
+  resolveAllyAttack(allyId = 'tiga') {
     const s = this.state;
-    if (s.status !== 'active' || !s.ally.active) return;
-    const action = this.allyAttackIndex++ % 2 === 0 ? 'punch' : 'beam';
-    const damage = this.damageMonster(action === 'punch' ? 12 : 18);
+    const second = allyId === 'zero';
+    const ally = second ? s.secondAlly : s.ally;
+    if (s.status !== 'active' || !ally.active) return;
+    const index = second ? this.secondAllyAttackIndex++ : this.allyAttackIndex++;
+    const action = index % 2 === 0 ? 'punch' : 'beam';
+    const baseDamage = second ? (action === 'punch' ? SECOND_ALLY_RULES.punchDamage : SECOND_ALLY_RULES.beamDamage) : (action === 'punch' ? 12 : 18);
+    const damage = this.damageMonster(baseDamage);
     s.stats.allyHits++;
     s.stats.allyDamage += damage;
-    s.ally.pose = action;
-    this.allyPoseUntil = s.elapsed + (action === 'punch' ? 430 : 780);
-    s.ally.nextAttackAt = s.elapsed + ASSIST_RULES.attackInterval;
-    this.emit('ally-hit', { action, damage, message: `${ASSIST_RULES.name}${action === 'punch' ? '援护拳' : '光线'}命中 · 怪兽 -${damage}` });
+    s.stats[`${allyId}Hits`]++;
+    s.stats[`${allyId}Damage`] += damage;
+    ally.pose = action;
+    const poseUntil = s.elapsed + (action === 'punch' ? 430 : 780);
+    if (second) this.secondAllyPoseUntil = poseUntil;
+    else this.allyPoseUntil = poseUntil;
+    ally.nextAttackAt = s.elapsed + (second ? SECOND_ALLY_RULES.attackInterval : ASSIST_RULES.attackInterval);
+    this.emit('ally-hit', { allyId, action, damage, message: `${second ? SECOND_ALLY_RULES.name : ASSIST_RULES.name}${action === 'punch' ? '援护拳' : '光线'}命中 · 怪兽 -${damage}` });
     this.checkMonsterHealth();
   }
 
   linkedAttack() {
     const s = this.state;
-    if (!s.ally.active) return { ok: false, reason: 'assist-inactive' };
+    if (!s.ally.active || !s.secondAlly.active) return { ok: false, reason: 'assist-inactive' };
     if (s.readyAt > s.elapsed) return { ok: false, reason: 'cooldown' };
     if (s.ally.linkReadyAt > s.elapsed) return { ok: false, reason: 'link-cooldown' };
     if (s.energy < ASSIST_RULES.linkCost) return { ok: false, reason: 'energy', required: ASSIST_RULES.linkCost };
@@ -286,11 +310,13 @@ export class BattleEngine {
     s.dodgeUntil = 0;
     s.heroPose = 'beam';
     s.ally.pose = 'beam';
-    this.heroPoseUntil = this.allyPoseUntil = s.elapsed + 780;
-    s.readyAt = s.elapsed + 1000;
+    s.secondAlly.pose = 'beam';
+    this.heroPoseUntil = this.allyPoseUntil = this.secondAllyPoseUntil = s.elapsed + 1100;
+    s.readyAt = s.elapsed + 1200;
     s.ally.linkReadyAt = s.elapsed + ASSIST_RULES.linkCooldown;
     s.ally.nextAttackAt = s.elapsed + ASSIST_RULES.attackInterval;
-    this.emit('link-hit', { action: 'beam', damage, message: `双人联合光线！银河与${ASSIST_RULES.name}共同出击 · 怪兽 -${damage}` });
+    s.secondAlly.nextAttackAt = s.elapsed + SECOND_ALLY_RULES.attackInterval;
+    this.emit('link-hit', { action: 'beam', damage, message: `三重终极光线！银河、${ASSIST_RULES.name}与${SECOND_ALLY_RULES.name}同时使出必杀技 · 怪兽 -${damage}` });
     this.checkMonsterHealth();
     return { ok: true, damage };
   }
@@ -358,6 +384,8 @@ export class BattleEngine {
     s.heroPose = outcome === 'win' ? 'victory' : outcome === 'lose' ? 'defeat' : 'idle';
     s.monsterPose = outcome === 'win' ? 'defeat' : outcome === 'lose' ? 'victory' : 'idle';
     Object.assign(s.ally, { active: false, pose: s.ally.summoned ? s.heroPose : 'idle', shieldUntil: 0, nextAttackAt: 0, linkReadyAt: 0 });
+    Object.assign(s.secondAlly, { active: false, pose: s.ally.summoned ? s.heroPose : 'idle', nextAttackAt: 0 });
+    this.allyPoseUntil = this.secondAllyPoseUntil = 0;
     const score = outcome === 'win' ? Math.round(400 + s.heroHp * 2 + s.stats.perfects * 75 + s.maxCombo * 12 + Math.max(0, 120 - s.elapsed / 1000)) : 0;
     s.result = Object.freeze({ outcome, monsterId: this.monster.id, monsterName: this.monster.name, difficulty: this.difficulty,
       ...s.stats, maxCombo: s.maxCombo, elapsed: Math.round(s.elapsed), heroHp: s.heroHp, score,

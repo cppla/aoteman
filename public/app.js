@@ -5,6 +5,7 @@ import { SaveSync } from './save-sync.js';
 import { mountSavePanel } from './save-panel.js';
 import { mountJourneyPanel, companionSuggestion } from './growth-panel.js';
 import { openDefenseDojo } from './defense-dojo.js';
+import { mountGrowthReactions, growthTitle } from './growth-reactions.js';
 
 const $ = id => document.getElementById(id);
 const paths = {
@@ -29,7 +30,7 @@ const decorate = (root = document) => root.querySelectorAll('[data-icon]').forEa
 const escapeText = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let state = freshState(), storageOK = true, storageMessage = '', busy = false, battleActive = false, currentBattle = null, lastStoredRaw = null;
 let poseTimer, toastTimer, lastPet = 0, audioContext, currentDojo, journeyView;
-let dojoActive = false;
+let dojoActive = false, growthReactions, petResponse = 0;
 let cloud, cloudBooting = true, cloudInfo = { status: 'loading', message: '正在连接服务器存档' };
 try {
   lastStoredRaw = localStorage.getItem(SAVE_KEY);
@@ -45,6 +46,12 @@ try {
 } catch { storageOK = false; }
 passTime(state);
 $('petHero').innerHTML = heroSVG('home');
+growthReactions = mountGrowthReactions({
+  habitat: $('habitat'), hero: $('petHero'),
+  isBlocked: () => busy || battleActive || dojoActive || cloudBooting || cloudInfo.transition || state.sleeping || $('infoDialog').open,
+  onPose: (pose, duration) => setPose(pose, duration, { reaction: true }),
+  onSay: text => say(text), onSound: sound,
+});
 decorate();
 $('journeyRoute').innerHTML = MILESTONES.map((item, index) => `<button class="journey-stop" data-journey="${item.id}"><span class="route-point">${String(index + 1).padStart(2, '0')}</span><strong>${escapeText(item.title)}</strong><small>一起完成</small></button>`).join('');
 
@@ -115,16 +122,27 @@ function floatReward(text) {
   const el = document.createElement('div'); el.className = 'reward-float'; el.textContent = text;
   $('habitat').append(el); setTimeout(() => el.remove(), 1800);
 }
-function setPose(pose, duration = 1500) {
+function setPose(pose, duration = 1500, { reaction = false } = {}) {
+  if (!reaction) growthReactions?.interrupt();
   clearTimeout(poseTimer); $('petHero').dataset.pose = pose;
-  if (duration) poseTimer = setTimeout(() => { $('petHero').dataset.pose = state.sleeping ? 'sleep' : 'idle'; busy = false; render(); }, duration);
+  if (duration) poseTimer = setTimeout(() => {
+    $('petHero').dataset.pose = state.sleeping ? 'sleep' : 'idle'; busy = false; render(); growthReactions?.flush();
+  }, duration);
 }
 function playAction(pose, text, duration = 1500) {
   busy = true; setPose(pose, duration); if (text) floatReward(text); render();
 }
-function leveled(before) {
-  const level = levelInfo(state.xp).level;
-  if (level > before) { say(`新的光芒！${state.companionName}升到 Lv. ${level} 啦，谢谢你陪我长大。`, true); floatReward(`升级！Lv. ${level}`); sound('win'); }
+function growthEarned(beforeXP, source) {
+  // Called at the mutation, never by render, sync, reload, or offline ticks.
+  const afterXP = state.xp;
+  if (afterXP <= beforeXP) return;
+  const beforeLevel = levelInfo(beforeXP).level, afterLevel = levelInfo(afterXP).level;
+  if (afterLevel > beforeLevel) {
+    state.journal.unshift({ text: `新的光芒！${state.companionName}升到 Lv. ${afterLevel} · ${growthTitle(afterLevel)}。`, at: Date.now() });
+    state.journal = state.journal.slice(0, 30);
+  }
+  try { growthReactions?.reward({ beforeXP, afterXP, name: state.companionName, source }); }
+  catch { /* Reward persistence must succeed even if optional effects fail. */ }
 }
 const sceneNames = { base:'星光基地', moon:'静谧月海', sunset:'落日之城' };
 function render() {
@@ -139,7 +157,7 @@ function render() {
     $(key + 'Fill').style.width = `${val}%`; $(key + 'Bar').setAttribute('aria-valuenow', val);
   }
   $('levelBadge').innerHTML = `LV.<b>${level.level}</b>`;
-  $('rankTitle').textContent = `${level.level < 3 ? '初生之光' : level.level < 6 ? '闪耀新星' : level.level < 10 ? '星际勇士' : '银河守护者'} · 你的宇宙搭档`;
+  $('rankTitle').textContent = `${growthTitle(level.level)} · 你的宇宙搭档`;
   $('xpText').textContent = level.level === 100 ? 'MAX · 银河守护者' : `${level.remaining} / ${level.needed} XP`;
   $('xpFill').style.width = `${Math.min(100, level.remaining / level.needed * 100)}%`;
   $('xpBar').setAttribute('aria-valuenow', level.remaining); $('xpBar').setAttribute('aria-valuemax', level.needed);
@@ -186,9 +204,9 @@ for (const [id, action, pose, text, reward, duration] of [
   ['trainBtn','train','train','银河出拳！每天进步一点点。','经验 +20 · 星光 +5',1800]
 ]) $(id).addEventListener('click', () => {
   if (busy || battleActive) return;
-  const before = levelInfo(state.xp).level, result = care(state, action);
+  const beforeXP = state.xp, result = care(state, action);
   if (!result.ok) return say(result.message);
-  say(text, true); playAction(pose, reward, duration); sound(action); leveled(before); save(); render();
+  say(text, true); playAction(pose, reward, duration); sound(action); growthEarned(beforeXP, action); save(); render();
 });
 $('restBtn').onclick = () => {
   if (busy || battleActive) return;
@@ -199,9 +217,11 @@ $('restBtn').onclick = () => {
 $('petBtn').onclick = () => {
   if (busy || battleActive) return;
   if (state.sleeping) return say('呼噜…梦里也在守护你呢。');
-  if (Date.now() - lastPet < 4000) return say('嘿嘿，我也好喜欢和你待在一起！');
-  lastPet = Date.now(); care(state, 'pet'); say('收到你的能量啦！最喜欢你了。');
-  playAction('wave', '心情 +6 ♡', 1350); sound('pet'); save(); render();
+  const lines = ['收到你的能量啦！最喜欢你了。', '嘿嘿，头顶暖暖的。给你一个英雄点头！', '你一来，我胸口的小星星就亮啦！', '约好了，今天也要一起开开心心。'];
+  const line = lines[petResponse++ % lines.length];
+  if (Date.now() - lastPet < 4000) { say(line); playAction('nod', '', 1100); sound('pet'); return; }
+  lastPet = Date.now(); care(state, 'pet'); say(line);
+  playAction(petResponse % 2 ? 'wave' : 'nod', '心情 +6 ♡', 1350); sound('pet'); save(); render();
 };
 $('defendBtn').onclick = launchDojo;
 function launchDojo() {
@@ -209,7 +229,7 @@ function launchDojo() {
   dojoActive = true;
   say('双手交叉——X！一起练习保护自己的时机。');
   setPose('defend', 0); render();
-  const done = () => { dojoActive = false; currentDojo = null; setPose(state.sleeping ? 'sleep' : 'idle', 0); render(); $('defendBtn').focus(); };
+  const done = () => { dojoActive = false; currentDojo = null; setPose(state.sleeping ? 'sleep' : 'idle', 0); render(); growthReactions?.flush(); $('defendBtn').focus(); };
   try { currentDojo = openDefenseDojo({ heroName: state.companionName, onSound: kind => sound(kind === 'defend' ? 'block' : kind), onClose: done }); }
   catch (error) { done(); console.error(error); notify('训练场暂时无法打开，请刷新后重试。'); }
 }
@@ -219,9 +239,10 @@ $('transformBtn').onclick = () => {
   playAction('transform', state.grown ? '光之巨人 · 觉醒' : '小小银河 · 回归', 1700); sound('transform'); save();
 };
 $('claimBtn').onclick = () => {
-  const before = levelInfo(state.xp).level; if (!claimDaily(state)) return;
+  if (!canInteract()) return;
+  const beforeXP = state.xp; if (!claimDaily(state)) return;
   say('今天的星光计划完成！谢谢你陪我度过闪亮的一天。', true); notify('星光 +15 · 经验 +25');
-  playAction('victory', '今日计划完成！', 1600); sound('win'); leveled(before); save(); render();
+  playAction('victory', '今日计划完成！', 1600); sound('win'); growthEarned(beforeXP, 'daily'); save(); render();
 };
 $('soundBtn').onclick = () => { state.sound = !state.sound; sound('pet'); save(); render(); notify(state.sound ? '音效已开启' : '音效已关闭'); };
 $('difficultySelect').onchange = e => { state.difficulty = e.target.value; save(); };
@@ -235,22 +256,23 @@ $('monsterSelect').onchange = e => { $('enemyDescription').textContent = monster
 function launch(monsterId = $('monsterSelect').value) {
   if (busy || battleActive || dojoActive || cloudBooting || cloudInfo.transition) return;
   if (!startExpedition(state)) { say('出发需要 15 活力和 10 饱食度，先吃饱、休息好吧！'); notify('先补充星光或休息，银河准备好就能出发。'); return; }
+  growthReactions?.interrupt();
   battleActive = true; save(); render();
   try {
     let resultSaved = false;
     const recordResult = result => {
       if (resultSaved) return;
       resultSaved = true; syncExternalState();
-      settleExpedition(state, result, monsterId); save(); render();
+      const beforeXP = state.xp;
+      settleExpedition(state, result, monsterId); growthEarned(beforeXP, 'battle'); save(); render();
     };
     currentBattle = openBattle({ monsterId, heroName: state.companionName, difficulty: state.difficulty, onSound: sound, onResult: recordResult, onComplete: result => {
       if (!battleActive) return;
-      const before = levelInfo(state.xp).level;
       recordResult(result); battleActive = false; currentBattle = null;
       const name = MONSTERS.find(m => m.id === monsterId)?.name || '怪兽';
       say(result.outcome === 'win' ? `${name}击破！经验 +40，星光 +20，我们守护了这片宇宙。` : result.outcome === 'lose' ? '勇敢尝试，也是成长。获得 5 经验，整备后我们再出发！' : '银河平安归来。补充能量后，随时可以再次出发。', true);
       if (result.outcome === 'win') playAction('victory', '守护成功！', 2000);
-      leveled(before); save(); render(); $('fightBtn').focus();
+      growthReactions?.flush(); save(); render(); $('fightBtn').focus();
     }});
   } catch (error) {
     battleActive = false; currentBattle = null; mutate(state, { food: 10, energy: 15 }); save(); render();
@@ -283,10 +305,10 @@ function showJourney(focusId) {
     getState: () => state, canAct: canInteract,
     onClaim: id => {
       if (!canInteract()) return;
-      const before = levelInfo(state.xp).level, result = claimMilestone(state, id);
+      const beforeXP = state.xp, result = claimMilestone(state, id);
       if (!result.ok) return notify(result.message);
       say(`成长航线 · ${result.milestone.title}，我们一起做到了！`, true);
-      sound('win'); leveled(before); save({ reason: `milestone:${id}` }); render();
+      sound('win'); growthEarned(beforeXP, 'milestone'); save({ reason: `milestone:${id}` }); render();
       notify(`成长礼已收藏：${result.reward.stars} 星光 + ${result.reward.xp} 经验。`);
     },
     onAction: action => { $('infoDialog').close(); journeyView = null; performAction(action === 'journey' ? 'train' : action); }
@@ -315,12 +337,13 @@ $('renameBtn').onclick = () => {
 
 function openInfo(title, content, eyebrow = 'GALAXY COMPANION') {
   if (battleActive || dojoActive) return;
+  growthReactions?.interrupt();
   journeyView = null;
   $('dialogTitle').textContent = title; $('dialogEyebrow').textContent = eyebrow; $('dialogContent').innerHTML = content;
   decorate($('infoDialog')); if (!$('infoDialog').open) $('infoDialog').showModal();
 }
 $('closeDialog').onclick = () => $('infoDialog').close();
-$('infoDialog').addEventListener('close', () => { journeyView = null; });
+$('infoDialog').addEventListener('close', () => { journeyView = null; growthReactions?.flush(); });
 $('baseNav').onclick = () => { $('infoDialog').close(); $('habitat').scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'center' }); };
 $('archiveNav').onclick = () => {
   openInfo('认识宇宙里的对手', `<p class="dialog-lede">看清预警，稳稳防御。每一次交锋，都是一起变强的机会。</p><div class="dialog-grid">${MONSTERS.map((monster, i) => `<article class="monster-card"><div class="monster-art"><div class="actor monster-actor" data-pose="idle">${monsterSVG(monster.id, `codex-${monster.id}`)}</div></div><h3>${escapeText(monster.name)}</h3><span class="mini-tag">${state.defeated.includes(monster.id) ? '✓ 已成功守护' : ['星际装甲 · 初阶','熔岩冲击 · 进阶','电光突袭 · 挑战'][i]}</span><p>${['坚硬的暗星装甲下，藏着一颗发光核心。蓄力时间充足，适合练习 X 防御。','从火山星球而来的角兽。火焰冲击更凶猛，留意每一次攻击预警。','游走星云的电光怪兽。节奏更快，积攒光能，用银河终结抓住胜机。'][i]}</p><button class="dialog-button" data-challenge="${monster.id}">挑战这位对手 ↗</button></article>`).join('')}</div>`, 'FIELD GUIDE / 03 DISCOVERIES');
@@ -335,7 +358,7 @@ $('journalNav').onclick = () => {
   ];
   openInfo('每一点成长，都在发光。', `<p class="dialog-lede">${state.training} 次特训，${state.wins} 次守护，${state.blocks} 次成功格挡。我们的故事还在继续。</p><div class="achievement-grid">${achievements.map(([symbol,title,description,unlocked]) => `<div class="achievement ${unlocked ? 'unlocked' : ''}"><span data-icon="${symbol}"></span><b>${title}</b><small>${unlocked ? '已点亮 · ' : ''}${description}</small></div>`).join('')}</div><div class="card-overline" style="margin-bottom:12px">OUR RECENT MEMORIES / 最近 30 条</div>${state.journal.length ? `<ul class="journal-list">${state.journal.map(entry => `<li><time>${new Date(entry.at).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})}</time><span>${escapeText(entry.text)}</span></li>`).join('')}</ul>` : '<p class="empty-journal">先喂一颗星光，写下故事的第一页吧。</p>'}`, 'GROWING TOGETHER');
 };
-$('helpBtn').onclick = () => openInfo('你好，银河的新搭档。', `<p class="dialog-lede">你的小小奥特曼不会死亡，也不用急着完成什么。喂点星光、摸摸他，一起慢慢长大就好。</p><div class="guide-grid"><div class="guide-item"><b>01 / 好好照顾</b><p>喂食免费：+25 饱食、+5 活力、+5 心情。特训消耗 8 饱食、12 活力，获得 20 经验和 5 星光。点击银河可摸摸他。</p></div><div class="guide-item"><b>02 / 休息与变身</b><p>休息每 3 秒恢复 8 活力，可随时唤醒。「银河变身」让小伙伴变成光之巨人；「防御练习」进入免费训练场，练习 3 轮预警与格挡，不消耗资源。</p></div><div class="guide-item"><b>03 / 选择出击</b><p>每场战斗消耗 15 活力、10 饱食。1 银河拳积攒光能，2 银河光线消耗光能，3 满能量释放终结。绿色区域攻击更强。</p></div><div class="guide-item"><b>04 / 交叉双臂，守护你</b><p>怪兽预警时按 4 或点 X 防御，普通格挡减伤 90%，最后一小段时间完美格挡可免伤。5 可闪避，战斗中可点暂停；离开页面会自动暂停。</p></div><div class="guide-item"><b>05 / 最后的光，一起守护</b><p>生命不高于 30% 且至少有 10 光能时，按 6 召唤迪迦，每场一次。耗尽现有光能，恢复 25% 生命，获得 3 秒护盾。迪迦会留场自动攻击；再攒 30 光能，按 6 发动联合光线，冷却 8 秒。护盾结束后记得继续防御。</p></div></div><p class="guide-note">完成战斗可推进每日计划，撤退不计入；胜利获得 40 经验与 20 星光，失败也有 5 经验。星光可以解锁场景。成长航线包含 8 个长期目标，每站都能领取一次奖励；点击状态卡的昵称按钮，可给伙伴起名字。进度会自动同步到服务器。换设备时输入同一恢复码，或下载恢复文件随身备份。离线状态最多结算 8 小时。</p>`, 'NEW PARTNER HANDBOOK');
+$('helpBtn').onclick = () => openInfo('你好，银河的新搭档。', `<p class="dialog-lede">你的小小奥特曼不会死亡，也不用急着完成什么。喂点星光、摸摸他，一起慢慢长大就好。</p><div class="guide-grid"><div class="guide-item"><b>01 / 好好照顾</b><p>喂食免费：+25 饱食、+5 活力、+5 心情。特训消耗 8 饱食、12 活力，获得 20 经验和 5 星光。点击银河可摸摸他，他会挥手、点头回应。每次获得经验都会收到英雄敬礼，升级还会展开星光光环。</p></div><div class="guide-item"><b>02 / 休息与变身</b><p>休息每 3 秒恢复 8 活力，可随时唤醒。「银河变身」让小伙伴变成光之巨人；「防御练习」进入免费训练场，练习 3 轮预警与格挡，不消耗资源。</p></div><div class="guide-item"><b>03 / 选择出击</b><p>每场战斗消耗 15 活力、10 饱食。1 银河拳积攒光能，2 银河光线消耗光能，3 满能量释放终结。绿色区域攻击更强。</p></div><div class="guide-item"><b>04 / 交叉双臂，守护你</b><p>怪兽预警时按 4 或点 X 防御，普通格挡减伤 90%，最后一小段时间完美格挡可免伤。5 可闪避，战斗中可点暂停；离开页面会自动暂停。</p></div><div class="guide-item"><b>05 / 最后的光，一起守护</b><p>生命不高于 30% 且至少有 10 光能时，按 6 召唤迪迦和赛罗，每场一次。耗尽现有光能，恢复 25% 生命，获得 3 秒护盾。两位伙伴会留场自动攻击；再攒 30 光能，按 6 发动三人联合必杀，冷却 8 秒。护盾结束后记得继续防御。</p></div></div><p class="guide-note">完成战斗可推进每日计划，撤退不计入；胜利获得 40 经验与 20 星光，失败也有 5 经验。星光可以解锁场景。成长航线包含 8 个长期目标，每站都能领取一次奖励；点击状态卡的昵称按钮，可给伙伴起名字。进度会自动同步到服务器。换设备时输入同一恢复码，或下载恢复文件随身备份。离线状态最多结算 8 小时。</p>`, 'NEW PARTNER HANDBOOK');
 $('sceneBtn').onclick = showScenes;
 function showScenes() {
   openInfo('给银河，一个喜欢的家。', `<p class="dialog-lede">已收集 ${state.stars} 星光。用训练与守护得到的星光，解锁新的风景。</p><div class="dialog-grid">${[['base',0,'最初相遇的地方'],['moon',30,'和月亮一起安静发光'],['sunset',50,'把日落装进每一天']].map(([id,cost,desc]) => `<button class="scene-card ${id} ${state.scene === id ? 'selected' : ''}" data-scene-choice="${id}" data-cost="${cost}" aria-pressed="${state.scene === id}"><strong>${sceneNames[id]}</strong><small>${desc}</small><small>${state.scene === id ? '✓ 当前场景' : state.unlocked.includes(id) ? '已解锁 · 点击切换' : `${cost} 星光解锁`}</small></button>`).join('')}</div>`, 'A HOME AMONG THE STARS');
@@ -358,7 +381,7 @@ function showSettings() {
     sync: cloud, getState: () => state, notify, canModify: () => !cloudBooting && !cloudInfo.transition,
     onImport: imported => {
       if (cloudBooting || cloudInfo.transition) { notify('正在核对服务器进度，请稍等后再导入。'); return; }
-      clearTimeout(poseTimer); busy = false; state = imported; passTime(state);
+      growthReactions?.reset(); clearTimeout(poseTimer); busy = false; state = imported; passTime(state);
       setPose(state.sleeping ? 'sleep' : 'wave', state.sleeping ? 0 : 1300);
       save({ reason: 'import' }); render(); $('infoDialog').close();
       say('带着我们的故事，继续冒险吧。');
@@ -382,8 +405,11 @@ try {
 cloud = new SaveSync({
   onState: incoming => {
     try {
+      // An ordinary save acknowledgement can normalize timestamps/resources;
+      // it must not erase the reward response still waiting for a care action.
+      if (cloudInfo.transition || incoming.xp !== state.xp || incoming.companionName !== state.companionName) growthReactions?.reset();
       state = sanitizeState(incoming); passTime(state);
-      if (!busy && !battleActive && !dojoActive) $('petHero').dataset.pose = state.sleeping ? 'sleep' : 'idle';
+      if (!busy && !battleActive && !dojoActive && !$('habitat').dataset.growthReaction) $('petHero').dataset.pose = state.sleeping ? 'sleep' : 'idle';
       save({ server: false }); render();
     } catch { notify('服务器返回的存档暂时无法读取，本机备份已保留。'); }
   },
@@ -392,6 +418,6 @@ cloud = new SaveSync({
 await cloud.start(state);
 }
 catch { updateSaveStatus(cloud?.getInfo() || { status: 'error', message: '浏览器无法初始化存档同步，请先导出本机进度。' }); }
-finally { cloudBooting = false; render(); }
+finally { cloudBooting = false; render(); growthReactions?.flush(); }
 if (storageMessage) { say(storageMessage); notify(storageMessage); }
 else if (!storageOK) notify('浏览器存储不可用。游玩后记得在设置中导出进度。');

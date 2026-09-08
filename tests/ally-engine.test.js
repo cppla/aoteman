@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ASSIST_RULES, BattleEngine, DIFFICULTIES } from '../public/battle-engine.js';
+import { ASSIST_RULES, SECOND_ALLY_RULES, BattleEngine, DIFFICULTIES } from '../public/battle-engine.js';
+import { zeroSVG } from '../public/zero-character.js';
 
 const create = (options = {}) => new BattleEngine({ random: () => 0, ...options });
 const emergency = (options = {}) => {
@@ -55,10 +56,12 @@ test('summoning spends all remaining light energy once, interrupts a strike, and
   assert.equal(state.stats.summons, 1);
   assert.equal(state.shieldRemaining, 3000);
   assert.deepEqual(state.ally, { summoned: true, active: true, pose: 'transform', shieldUntil: 4500, nextAttackAt: 2300, linkReadyAt: 0 });
+  assert.deepEqual(state.secondAlly, { active: true, pose: 'transform', nextAttackAt: 2600 });
   const event = game.drainEvents().find((entry) => entry.type === 'summon');
   assert.deepEqual(event.interruptedAttack, attack);
   assert.equal(event.heal, 30);
   assert.equal(event.energySpent, 77);
+  assert.match(event.message, /迪迦与赛罗登场/);
   game.state.heroHp = 1;
   game.state.energy = 100;
   const used = game.snapshot();
@@ -115,7 +118,7 @@ test('arrival protection expires at exactly 3 seconds and ordinary damage and de
   assert.equal(game.snapshot().energy, 24);
 });
 
-test('ally attacks on arrival then alternates independent punches and beams at fixed intervals', () => {
+test('both allies alternate independent punches and beams on their own arrival and attack timers', () => {
   const game = emergency();
   game.act('summon');
   game.state.nextAttackAt = 100_000;
@@ -127,18 +130,24 @@ test('ally attacks on arrival then alternates independent punches and beams at f
   assert.equal(game.snapshot().ally.pose, 'beam');
   game.step(2400);
   const state = game.snapshot();
-  assert.equal(state.monsterHp, 198);
-  assert.equal(state.stats.allyHits, 3);
-  assert.equal(state.stats.allyDamage, 42);
-  assert.equal(state.stats.damageDealt, 42);
+  assert.equal(state.monsterHp, 164);
+  assert.equal(state.stats.allyHits, 5);
+  assert.equal(state.stats.allyDamage, 76);
+  assert.equal(state.stats.damageDealt, 76);
+  assert.equal(state.stats.tigaHits, 3);
+  assert.equal(state.stats.zeroHits, 2);
+  assert.equal(state.stats.tigaDamage, 42);
+  assert.equal(state.stats.zeroDamage, 34);
   assert.equal(state.stats.punches, 0);
   assert.equal(state.stats.beams, 0);
   assert.equal(state.combo, 0);
   assert.equal(state.energy, 0);
-  assert.deepEqual(game.drainEvents().filter((entry) => entry.type === 'ally-hit').map(({ at, action, damage }) => ({ at, action, damage })), [
-    { at: 800, action: 'punch', damage: 12 },
-    { at: 3200, action: 'beam', damage: 18 },
-    { at: 5600, action: 'punch', damage: 12 },
+  assert.deepEqual(game.drainEvents().filter((entry) => entry.type === 'ally-hit').map(({ at, allyId, action, damage }) => ({ at, allyId, action, damage })), [
+    { at: 800, allyId: 'tiga', action: 'punch', damage: 12 },
+    { at: 1100, allyId: 'zero', action: 'punch', damage: 14 },
+    { at: 3200, allyId: 'tiga', action: 'beam', damage: 18 },
+    { at: 3900, allyId: 'zero', action: 'beam', damage: 20 },
+    { at: 5600, allyId: 'tiga', action: 'punch', damage: 12 },
   ]);
 });
 
@@ -155,7 +164,7 @@ test('hero attacks and ally attacks damage the same monster without replacing ea
   assert.equal(game.snapshot().energy, 9);
 });
 
-test('joint beam spends exactly 30 energy, deals unmultiplied damage and poses both heroes', () => {
+test('triple finisher spends exactly 30 energy, deals one unmultiplied 84 hit and poses all three heroes', () => {
   const game = emergency();
   assert.equal(game.act('link').reason, 'assist-inactive');
   game.act('summon');
@@ -165,10 +174,10 @@ test('joint beam spends exactly 30 energy, deals unmultiplied damage and poses b
   game.state.energy = 60;
   game.act('defend');
   const before = game.snapshot();
-  assert.deepEqual(game.act('link'), { ok: true, damage: 54 });
+  assert.deepEqual(game.act('link'), { ok: true, damage: 84 });
   const state = game.snapshot();
-  assert.equal(state.monsterHp, before.monsterHp - 54);
-  assert.equal(state.stats.damageDealt, before.stats.damageDealt + 54);
+  assert.equal(state.monsterHp, before.monsterHp - 84);
+  assert.equal(state.stats.damageDealt, before.stats.damageDealt + 84);
   assert.equal(state.stats.allyDamage, before.stats.allyDamage, 'joint damage is not double-counted as an autonomous ally hit');
   assert.equal(state.stats.allyHits, before.stats.allyHits);
   assert.equal(state.stats.linkAttacks, 1);
@@ -176,16 +185,30 @@ test('joint beam spends exactly 30 energy, deals unmultiplied damage and poses b
   assert.equal(state.energy, 30);
   assert.equal(state.heroPose, 'beam');
   assert.equal(state.ally.pose, 'beam');
+  assert.equal(state.secondAlly.pose, 'beam');
   assert.equal(state.defending, false);
-  assert.equal(state.cooldown, 1000);
+  assert.equal(state.cooldown, 1200);
   assert.equal(state.linkCooldown, 8000);
   assert.equal(state.ally.nextAttackAt, state.elapsed + 2400);
+  assert.equal(state.secondAlly.nextAttackAt, state.elapsed + 2800);
+  const linkEvents = game.drainEvents().filter((entry) => entry.type === 'link-hit');
+  assert.equal(linkEvents.length, 1);
+  assert.equal(linkEvents[0].damage, 84);
+  game.step(1099);
+  assert.equal(game.snapshot().heroPose, 'beam');
+  assert.equal(game.snapshot().ally.pose, 'beam');
+  assert.equal(game.snapshot().secondAlly.pose, 'beam');
+  game.step(1);
+  assert.equal(game.snapshot().heroPose, 'idle');
+  assert.equal(game.snapshot().ally.pose, 'idle');
+  assert.equal(game.snapshot().secondAlly.pose, 'idle');
 });
 
 test('joint beam respects shared and dedicated cooldowns without spending on rejected attempts', () => {
   const game = emergency();
   game.act('summon');
   game.state.nextAttackAt = 100_000;
+  game.state.monsterHp = game.state.monsterMaxHp = 1000;
   game.state.energy = 100;
   game.act('punch');
   assert.equal(game.act('link').reason, 'cooldown');
@@ -194,10 +217,10 @@ test('joint beam respects shared and dedicated cooldowns without spending on rej
   const energy = game.snapshot().energy;
   assert.equal(game.act('link').reason, 'cooldown');
   assert.equal(game.act('punch').reason, 'cooldown');
-  game.step(1000);
+  game.step(1200);
   assert.equal(game.act('link').reason, 'link-cooldown');
   assert.equal(game.snapshot().energy, energy);
-  game.step(6999);
+  game.step(6799);
   assert.equal(game.act('link').reason, 'link-cooldown');
   game.step(1);
   assert.equal(game.act('link').ok, true);
@@ -226,6 +249,10 @@ test('pausing freezes ally arrival, automatic strikes, shield duration and joint
   game.setPaused(false);
   game.step(2400);
   assert.equal(game.snapshot().stats.allyHits, 2);
+  assert.equal(game.snapshot().stats.zeroHits, 0);
+  game.step(400);
+  assert.equal(game.snapshot().stats.allyHits, 3);
+  assert.equal(game.snapshot().stats.zeroHits, 1);
 });
 
 test('large and small steps preserve the complete ally and enemy sequence', () => {
@@ -260,6 +287,7 @@ test('an ally hit can trigger enrage and a final hit settles immediately and onl
   assert.equal(state.ally.active, false);
   assert.equal(state.ally.pose, 'victory');
   assert.equal(state.ally.nextAttackAt, 0);
+  assert.deepEqual(state.secondAlly, { active: false, pose: 'victory', nextAttackAt: 0 });
   assert.equal(state.shieldRemaining, 0);
   assert.equal(game.act('summon').reason, 'ended');
   assert.equal(game.act('link').reason, 'ended');
@@ -306,14 +334,77 @@ test('defeat and retreat stop the ally, and snapshot mutation cannot corrupt its
     const copy = game.snapshot();
     copy.ally.nextAttackAt = 0;
     copy.ally.summoned = false;
+    copy.secondAlly.nextAttackAt = 0;
+    copy.secondAlly.active = false;
+    copy.stats.zeroHits = 999;
     assert.equal(game.snapshot().ally.nextAttackAt, 800);
     assert.equal(game.snapshot().ally.summoned, true);
+    assert.deepEqual(game.snapshot().secondAlly, { active: true, pose: 'transform', nextAttackAt: 1100 });
+    assert.equal(game.snapshot().stats.zeroHits, 0);
     game.finish(outcome);
     const ended = game.snapshot();
     assert.equal(ended.ally.active, false);
     assert.equal(ended.ally.pose, outcome === 'lose' ? 'defeat' : 'idle');
+    assert.deepEqual(ended.secondAlly, { active: false, pose: outcome === 'lose' ? 'defeat' : 'idle', nextAttackAt: 0 });
     assert.equal(ended.shieldRemaining, 0);
     game.step(10_000);
     assert.deepEqual(game.snapshot(), ended);
   }
+});
+
+test('Zero can deliver the final hit before a simultaneous lethal monster strike and settle only once', () => {
+  let settled = 0;
+  const game = emergency({ onFinish: () => settled++ });
+  game.act('summon');
+  game.state.heroHp = 1;
+  game.state.monsterHp = 19;
+  game.state.ally.shieldUntil = 0;
+  strikeAt(game, SECOND_ALLY_RULES.arrivalDelay);
+  game.step(1100);
+  const state = game.snapshot();
+  assert.equal(state.result.outcome, 'win');
+  assert.equal(state.result.heroHp, 1);
+  assert.equal(state.result.tigaDamage, 12);
+  assert.equal(state.result.zeroDamage, 7);
+  assert.equal(state.result.zeroHits, 1);
+  assert.equal(state.result.allyDamage, 19);
+  assert.equal(state.result.damageTaken, 0);
+  assert.equal(settled, 1);
+  const events = game.drainEvents();
+  assert.deepEqual(events.filter(event => event.type === 'ally-hit').map(event => event.allyId), ['tiga', 'zero']);
+  assert.equal(events.some(event => event.type === 'hurt'), false);
+  assert.equal(events.filter(event => event.type === 'finish').length, 1);
+  game.step(50_000);
+  game.resolveAllyAttack('zero');
+  assert.deepEqual(game.snapshot(), state);
+  assert.deepEqual(game.drainEvents(), []);
+  assert.equal(settled, 1);
+});
+
+test('when all three attacks share a deadline, Tiga hits first, then Zero, then the monster', () => {
+  const game = emergency();
+  game.act('summon');
+  game.state.ally.nextAttackAt = 1100;
+  game.state.ally.shieldUntil = 0;
+  strikeAt(game, 1100);
+  game.drainEvents();
+  game.step(1100);
+  assert.deepEqual(game.drainEvents().map(event => [event.type, event.allyId || 'monster', event.at]), [
+    ['ally-hit', 'tiga', 1100], ['ally-hit', 'zero', 1100], ['hurt', 'monster', 1100],
+  ]);
+});
+
+test('Zero has an independent double-fin silhouette and namespaced SVG paint references', () => {
+  const first = zeroSVG('first');
+  const second = zeroSVG('second');
+  assert.match(first, /aria-label="赛罗奥特曼/);
+  assert.match(first, /class="zero-left-fin"/);
+  assert.match(first, /class="zero-right-fin"/);
+  assert.match(first, /class="hero-beam-flare"/);
+  assert.match(first, /viewBox="0 0 360 420"/);
+  const ids = [...first.matchAll(/id="([^"]+)"/g)].map(match => match[1]);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.ok(ids.length > 5);
+  for (const [, id] of first.matchAll(/url\(#([^\)]+)\)/g)) assert.ok(ids.includes(id), `paint ${id} is defined`);
+  for (const id of ids) assert.ok(!second.includes(`id="${id}"`));
 });

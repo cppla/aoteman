@@ -1,6 +1,7 @@
 import { BattleEngine, MONSTERS, DIFFICULTIES, ACTIONS, ASSIST_RULES } from './battle-engine.js';
 import { heroSVG, monsterSVG } from './characters.js';
 import { allySVG } from './ally-character.js';
+import { zeroSVG } from './zero-character.js';
 
 export { MONSTERS };
 
@@ -19,8 +20,8 @@ const BRIEFINGS = {
 function reviewBattle(result) {
   const taken = result.damageTaken || 0;
   if (result.summons > 0) return result.outcome === 'win'
-    ? `你和迪迦一起守住了城市！迪迦自动攻击造成 ${result.allyDamage} 点伤害，双人释放了 ${result.linkAttacks} 次联合光线。记住：护盾只有 3 秒，之后仍要用 X 防御保护自己。`
-    : '迪迦会陪你战斗到最后。登场护盾只有 3 秒，之后记得架起 X 防御；格挡攒到 30 光能，就能按 6 发动联合光线。';
+    ? `你和迪迦、赛罗一起守住了城市！伙伴自动攻击造成 ${result.allyDamage} 点伤害，三人释放了 ${result.linkAttacks} 次联合必杀。记住：护盾只有 3 秒，之后仍要用 X 防御保护自己。`
+    : '迪迦和赛罗会陪你战斗到最后。登场护盾只有 3 秒，之后记得架起 X 防御；格挡攒到 30 光能，就能点「三重必杀」。';
   if (taken > 0 && result.blocks === 0 && result.dodges === 0) return `本次承受了 ${taken} 点伤害，还没有成功防御。下次橙色预警出现时先点「X 防御」，保持到冲击结束再出拳。`;
   if (result.blocks > result.perfects) return `本次挡住 ${result.blocks} 次攻击，其中 ${result.perfects} 次完美。下一次试着在进度条进入绿色末段时点「X 防御」，可免伤并获得 24 光能。`;
   if (taken > 0) return `本次最高 ${result.maxCombo} 连击，但仍承受了 ${taken} 点伤害。下次预警时先停手，防御架起后不要出拳，避免解除防御后被击中、中断连击。`;
@@ -85,17 +86,20 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
         <div class="battle-vs">VS</div>
         <div class="fighter-hud enemy-hud"><div class="fighter-meta"><span>${escapeHTML(monster.name)}</span><small>THREAT ${monster.threat}</small></div><div class="battle-health" role="progressbar" aria-label="怪兽生命值" aria-valuemin="0" aria-valuemax="${monster.hp}" aria-valuenow="${monster.hp}"><span class="health-fill enemy-health-fill"></span></div><div class="fighter-foot"><span class="monster-health-number">${monster.hp} / ${monster.hp}</span><span class="monster-status">${escapeHTML(monster.subtitle)}</span></div></div>
       </div>
-      <div class="ally-status" data-state="waiting"><span class="ally-emblem" aria-hidden="true">✧</span><div><strong class="ally-status-name">最后的光 · 迪迦待命</strong><span class="ally-status-copy">生命 ≤30% · 至少 10 光能 · 每场一次</span></div><span class="ally-status-tag">援护 <kbd>6</kbd></span></div>
+      <div class="ally-status" data-state="waiting"><span class="ally-emblem" aria-hidden="true">✧</span><div><strong class="ally-status-name">最后的光 · 迪迦与赛罗待命</strong><span class="ally-status-copy">生命 ≤30% · 至少 10 光能 · 每场一次</span></div><span class="ally-status-tag">援护 <kbd>6</kbd></span></div>
       <div class="battle-arena" data-phase="ready">
         <div class="battle-nebula" aria-hidden="true"></div><div class="battle-orbit" aria-hidden="true"></div><div class="arena-coordinate">SECTOR 07 <span>35° 40′ N · TOKYO</span></div>
         <div class="battle-warning" aria-live="off"><span class="warning-symbol">!</span><div><strong class="warning-title">守护城市，光芒集结</strong><span class="warning-copy">观察攻击预警，双臂交叉抵挡冲击</span></div><span class="warning-time">READY</span><div class="warning-progress"><span></span><i title="完美格挡窗口"></i></div></div>
         <div class="battle-combo" aria-live="off"><b>0</b><span>连击 <small>COMBO</small></span></div>
         <svg class="battle-city" viewBox="0 0 1200 300" preserveAspectRatio="none" aria-hidden="true"><defs><pattern id="battle-windows" width="18" height="24" patternUnits="userSpaceOnUse"><rect x="5" y="6" width="3" height="5" fill="#648895" opacity=".32"/></pattern></defs><path d="M0 300V140h50v-45h52v80h32V68h64v102h40V120h48v65h34V74h28V38h16v36h32v104h36V136h60v64h40V98h58v50h30V76h50v98h38V126h54v53h28V99h36V39h12v60h35v109h43V141h44v31h34V84h53v93h22v-52h49v82h25V113h65V74h42v92h52V300Z" fill="#112b38"/><path d="M0 300V140h50v-45h52v80h32V68h64v102h40V120h48v65h34V74h28V38h16v36h32v104h36V136h60v64h40V98h58v50h30V76h50v98h38V126h54v53h28V99h36V39h12v60h35v109h43V141h44v31h34V84h53v93h22v-52h49v82h25V113h65V74h42v92h52V300Z" fill="url(#battle-windows)"/><path d="M0 300v-60h89v-28h84v31h54v-58h76v54h92v-35h71v30h129v-43h83v58h82v-63h70v45h96v-34h80v49h81v-60h67v114Z" fill="#0a202c"/></svg>
         <div class="arena-ground" aria-hidden="true"></div>
-        <div class="ally-slot" hidden><div class="ally-arrival" aria-hidden="true"></div><span class="ally-nameplate">迪迦 <small>SUPPORT</small></span></div>
+        <div class="ally-slot" hidden><div class="ally-arrival" aria-hidden="true"></div><span class="ally-nameplate">迪迦 <small>TIGA</small></span></div>
+        <div class="second-ally-slot" hidden><div class="ally-arrival" aria-hidden="true"></div><span class="ally-nameplate">赛罗 <small>ZERO</small></span></div>
         <div class="battle-actor actor hero-actor" data-pose="idle" aria-label="${escapedName}">${heroSVG('battle-hero')}</div>
         <div class="battle-actor actor monster-actor" data-pose="idle" data-monster="${monster.id}" aria-label="${escapeHTML(monster.name)}">${monsterSVG(monster.id, 'battle-monster')}</div>
-        <div class="battle-beam" aria-hidden="true"></div><div class="ally-beam" aria-hidden="true"></div><div class="assist-barrier" aria-hidden="true"></div><div class="enemy-projectile" aria-hidden="true"></div><div class="battle-impact" aria-hidden="true"></div>
+        <div class="battle-beam" aria-hidden="true"></div><div class="ally-beam" aria-hidden="true"></div><div class="second-ally-beam" aria-hidden="true"></div><div class="assist-barrier" aria-hidden="true"></div><div class="enemy-projectile" aria-hidden="true"></div><div class="battle-impact" aria-hidden="true"></div>
+        <div class="strike-burst" aria-hidden="true">${Array.from({ length: 10 }, (_, n) => `<i style="--spark-angle:${n * 36}deg;--spark-length:${n % 2 ? 76 : 52}px"></i>`).join('')}</div>
+        <div class="team-resonance" aria-hidden="true"><i></i><i></i><i></i></div><div class="ultimate-streaks" aria-hidden="true"></div>
         <div class="damage-numbers" aria-hidden="true"></div><div class="battle-callout" aria-hidden="true"></div>
         <div class="arena-bottom-label"><span><i></i> LIVE COMBAT</span><span>光芒，因守护而存在。</span></div>
         <div class="battle-overlay ready-overlay"><div class="battle-overlay-card battle-ready-card"><p class="battle-eyebrow">THREAT BRIEFING · ${escapeHTML(monster.name)}</p><h3 title="${escapedName}，准备守护。">${escapedName}，准备守护。</h3><p class="battle-strategy">${escapeHTML(briefing.strategy)}</p><ul class="battle-skill-brief">${briefing.skills.map(([skill, hint]) => `<li><strong>${escapeHTML(skill)}</strong><span>${escapeHTML(hint)}</span></li>`).join('')}</ul><div class="battle-ready-tip">点「X 防御」或按 <kbd>4</kbd> · 绿色末段格挡：免伤 +24 光能</div><button type="button" class="battle-primary" data-command="start">开始守护 <span>↗</span></button></div></div>
@@ -112,7 +116,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
           <button type="button" class="battle-action special-action" data-action="special" aria-keyshortcuts="3" title="消耗 100 光能，释放银河终结"><kbd>3</kbd>${icon('special')}<strong>银河终结</strong><span>消耗 100</span><i class="action-cooldown"></i></button>
           <button type="button" class="battle-action defend-action" data-action="defend" aria-keyshortcuts="4" title="双臂交叉 X 防御，减伤 90%；在预警最后一段出手可完美格挡"><kbd>4</kbd>${icon('defend')}<strong>X 防御</strong><span>减伤 90%</span><i class="action-cooldown"></i></button>
           <button type="button" class="battle-action" data-action="dodge" aria-keyshortcuts="5" title="接下来 0.48 秒免伤，冷却 2.1 秒；太早闪避会被命中"><kbd>5</kbd>${icon('dodge')}<strong>瞬身闪避</strong><span>免伤 0.48 秒</span><i class="action-cooldown"></i></button>
-          <button type="button" class="battle-action assist-action" data-action="summon" aria-keyshortcuts="6" title="生命不高于 30% 且至少 10 光能时，耗尽光能召唤迪迦；恢复 25% 生命并获得 3 秒护盾，每场一次"><kbd>6</kbd>${icon('summon')}<strong>召唤迪迦</strong><span>濒危时可用</span><i class="action-cooldown"></i></button>
+          <button type="button" class="battle-action assist-action" data-action="summon" aria-keyshortcuts="6" title="生命不高于 30% 且至少 10 光能时，耗尽光能召唤迪迦和赛罗；恢复 25% 生命并获得 3 秒护盾，每场一次"><kbd>6</kbd>${icon('summon')}<strong>召唤伙伴</strong><span>濒危时可用</span><i class="action-cooldown"></i></button>
         </div>
         <div class="battle-feedback"><p class="battle-log" role="status" aria-live="polite">准备就绪。点击「开始守护」进入战斗。</p><span id="battle-help">按 1–6 出招 · P 暂停</span></div>
       </div>
@@ -137,6 +141,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
     resultOverlay: $('.result-overlay'), log: $('.battle-log'), callout: $('.battle-callout'),
     beam: $('.battle-beam'), projectile: $('.enemy-projectile'), impact: $('.battle-impact'),
     allySlot: $('.ally-slot'), ally: null, allyBeam: $('.ally-beam'), barrier: $('.assist-barrier'),
+    secondAllySlot: $('.second-ally-slot'), secondAlly: null, secondAllyBeam: $('.second-ally-beam'), burst: $('.strike-burst'),
     allyStatus: $('.ally-status'), allyName: $('.ally-status-name'), allyCopy: $('.ally-status-copy'),
     actions: [...dialog.querySelectorAll('[data-action]')], actionHint: $('.battle-action-hint'),
   };
@@ -158,7 +163,13 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
     return id;
   };
   let calloutTimer;
+  let calloutPriority = 0;
   let logTimer;
+  const arenaResize = new ResizeObserver(([entry]) => {
+    elements.arena.style.setProperty('--arena-height', `${entry.contentRect.height}px`);
+    alignBeams();
+  });
+  arenaResize.observe(elements.arena);
 
   function sound(name) {
     try { onSound?.(name); } catch { /* Sound is optional; combat must keep running. */ }
@@ -178,11 +189,13 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
     setText(elements.log, message);
   }
 
-  function callout(text, kind = '') {
+  function callout(text, kind = '', priority = 0) {
+    if (calloutTimer && priority < calloutPriority) return;
     if (calloutTimer) { clearTimeout(calloutTimer); timers.delete(calloutTimer); }
+    calloutPriority = priority;
     elements.callout.textContent = text;
     elements.callout.className = `battle-callout visible ${kind}`;
-    calloutTimer = later(() => { elements.callout.className = 'battle-callout'; }, 1350);
+    calloutTimer = later(() => { elements.callout.className = 'battle-callout'; calloutTimer = null; calloutPriority = 0; }, 1350);
   }
 
   function damageNumber(text, target, kind = '') {
@@ -190,6 +203,15 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
     number.className = `damage-number ${target} ${kind}`;
     number.textContent = text;
     $('.damage-numbers').append(number);
+    if (target === 'hero') {
+      // Summoning moves the player into the front lane. Anchor feedback to
+      // that hero, so healing and damage never appear on a support partner.
+      const arena = elements.arena.getBoundingClientRect();
+      const head = elements.hero.querySelector('.hero-head').getBoundingClientRect();
+      number.style.left = `${head.x + head.width / 2 - arena.x}px`;
+      number.style.top = `${Math.max(78, head.y - arena.y - 18)}px`;
+      number.style.translate = '-50% 0';
+    }
     later(() => number.remove(), 1200);
   }
 
@@ -202,6 +224,19 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
     elements.ally.innerHTML = allySVG('battle-tiga');
     elements.allySlot.append(elements.ally);
     elements.allySlot.hidden = false;
+    elements.secondAlly = document.createElement('div');
+    elements.secondAlly.className = 'actor hero-actor second-ally-actor';
+    elements.secondAlly.dataset.pose = 'idle';
+    elements.secondAlly.setAttribute('aria-label', '赛罗奥特曼，援护伙伴');
+    elements.secondAlly.innerHTML = zeroSVG('battle-zero');
+    elements.secondAllySlot.append(elements.secondAlly);
+    elements.secondAllySlot.hidden = false;
+    elements.arena.dataset.assist = 'active';
+  }
+
+  function strikeBurst(power = 'punch') {
+    elements.burst.dataset.power = power;
+    animate(elements.burst, 'active', power === 'link' ? 1100 : 700);
   }
 
   function processEvents() {
@@ -213,10 +248,11 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
         damageNumber(`−${event.damage}`, 'enemy', event.precise ? 'precise' : '');
         elements.impact.dataset.target = 'enemy';
         animate(elements.impact, 'active', 600);
+        strikeBurst(event.action);
         if (event.action !== 'punch') {
           elements.beam.dataset.power = event.action;
           animate(elements.beam, 'active', 820);
-          if (event.action === 'special') { animate(elements.arena, 'ultimate', 1100); callout('银河终结', 'ultimate-callout'); }
+          if (event.action === 'special') { animate(elements.arena, 'ultimate', 1100); callout('银河终结', 'ultimate-callout', 2); }
         } else {
           animate(elements.hero, 'striking', 450);
         }
@@ -224,9 +260,11 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
       } else if (event.type === 'summon') {
         revealAlly();
         animate(elements.allySlot, 'arriving', 950);
+        animate(elements.secondAllySlot, 'arriving', 950);
+        animate(elements.arena, 'team-arrival', 1100);
         sound('transform');
         damageNumber(`+${event.heal} 生命`, 'hero', 'good');
-        callout('你不是一个人在战斗！', 'assist-callout');
+        callout('迪迦 × 赛罗 · 三位英雄，集结！', 'assist-callout', 1);
       } else if (event.type === 'ally-hit' || event.type === 'link-hit') {
         revealAlly();
         const linked = event.type === 'link-hit';
@@ -234,13 +272,17 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
         damageNumber(`−${event.damage}`, 'enemy', 'assist-damage');
         elements.impact.dataset.target = 'enemy';
         animate(elements.impact, 'active', 650);
-        if (linked || event.action === 'beam') animate(elements.allyBeam, 'active', 820);
-        else animate(elements.ally, 'striking', 450);
+        strikeBurst(linked ? 'link' : event.action);
+        const partnerBeam = event.allyId === 'zero' ? elements.secondAllyBeam : elements.allyBeam;
+        const partner = event.allyId === 'zero' ? elements.secondAlly : elements.ally;
+        if (linked || event.action === 'beam') animate(partnerBeam, 'active', linked ? 1100 : 820);
+        else animate(partner, 'striking', 450);
         if (linked) {
           elements.beam.dataset.power = 'link';
-          animate(elements.beam, 'active', 820);
-          animate(elements.arena, 'linked-strike', 950);
-          callout('银河 × 迪迦 · 联合光线', 'assist-callout');
+          animate(elements.beam, 'active', 1100);
+          animate(elements.secondAllyBeam, 'active', 1100);
+          animate(elements.arena, 'linked-strike', 1100);
+          callout('银河 × 迪迦 × 赛罗 · 三重必杀', 'assist-callout', 2);
         }
       } else if (['block', 'perfect', 'hurt', 'dodge', 'assist-shield'].includes(event.type)) {
         elements.projectile.dataset.kind = event.attack.kind;
@@ -250,7 +292,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
           sound('block');
           damageNumber('护盾 · 0', 'hero', 'good');
           animate(elements.barrier, 'absorbing', 650);
-          callout('迪迦护盾 · 伤害抵消', 'assist-callout');
+          callout('伙伴护盾 · 伤害抵消', 'assist-callout');
         } else if (event.type === 'hurt') {
           sound('hurt');
           damageNumber(`−${event.damage}`, 'hero', 'hurt');
@@ -271,7 +313,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
         callout('怪兽狂暴 · 警戒升级', 'danger-callout');
       } else if (event.type === 'finish') {
         if (event.outcome === 'win') sound('win');
-        later(showResult, event.outcome === 'retreat' ? 0 : 1000);
+        later(showResult, event.outcome === 'retreat' ? 0 : elements.arena.classList.contains('linked-strike') ? 1250 : 1000);
       }
     }
   }
@@ -285,9 +327,12 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
       if (classes.size === 0) animations.delete(element);
     }
     const focusedAction = elements.actions.includes(document.activeElement) ? document.activeElement : null;
-    elements.hero.dataset.pose = s.heroPose;
+    // A finishing hit saves immediately; let its visible attack finish before
+    // the victory pose, including when that hit defeats the monster.
+    const linkedVisual = s.status === 'ended' && s.result?.outcome === 'win' && elements.arena.classList.contains('linked-strike');
+    elements.hero.dataset.pose = linkedVisual ? 'beam' : s.heroPose;
     elements.monster.dataset.pose = s.monsterPose;
-    renderAssist(s);
+    renderAssist(s, linkedVisual);
     elements.arena.dataset.enraged = s.enraged ? 'true' : 'false';
     elements.arena.classList.toggle('is-paused', s.paused);
     elements.arena.dataset.phase = s.status === 'ended' ? 'ended' : !started ? 'ready' : s.paused ? 'paused' : s.currentAttack ? 'warning' : 'active';
@@ -297,7 +342,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
     elements.monsterBar.setAttribute('aria-valuenow', s.monsterHp);
     elements.heroHealth.textContent = `${s.heroHp} / ${s.heroMaxHp}`;
     elements.monsterHealth.textContent = `${s.monsterHp} / ${s.monsterMaxHp}`;
-    elements.heroStatus.textContent = s.shieldRemaining > 0 ? '迪迦护盾 · 暂时免伤' : s.heroHp <= s.heroMaxHp * ASSIST_RULES.hpThreshold ? '能量灯闪烁 · 生命危急' : s.defending ? 'X 防御中 · 出招将解除' : '守护之光';
+    elements.heroStatus.textContent = s.shieldRemaining > 0 ? '伙伴护盾 · 暂时免伤' : s.heroHp <= s.heroMaxHp * ASSIST_RULES.hpThreshold ? '能量灯闪烁 · 生命危急' : s.defending ? 'X 防御中 · 出招将解除' : '守护之光';
     elements.hero.classList.toggle('low-health', s.heroHp <= s.heroMaxHp * ASSIST_RULES.hpThreshold);
     elements.monsterStatus.textContent = s.enraged ? '⚠ 狂暴 · 攻势加快' : monster.subtitle;
     elements.monsterStatus.classList.toggle('is-enraged', s.enraged);
@@ -345,7 +390,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
       setText(elements.warningTime, !started ? 'READY' : s.status === 'ended' ? 'END' : 'ATTACK');
       elements.warningFill.style.width = '0%';
     }
-    const hint = !started ? '先观察怪兽招式，再开始守护。' : s.status === 'ended' ? '行动完成，查看本次复盘。' : s.paused ? '战斗已暂停，所有技能计时冻结。' : s.assistAvailable ? '最后的光！按 6 召唤迪迦：耗尽光能、恢复生命、并肩作战。' : s.shieldRemaining > 0 ? '迪迦护盾正在保护你，趁现在出拳攒光能；30 光能可联合攻击！' : s.defending ? '已架起 X 防御，等冲击落下；出拳或闪避会解除防御。' : s.currentAttack ? s.attackRemaining <= s.perfectWindow ? '现在点「X 防御」！绿色末段可完美格挡。' : '橙色预警：点「X 防御」稳住，也可以等绿色末段再格挡。' : s.cooldown > 0 ? '攻击正在冷却，读秒结束后再出招；X 防御随时可用。' : s.ally.active && s.energy >= ASSIST_RULES.linkCost && s.linkCooldown === 0 ? '你们的光汇聚了！按 6 发动双人联合光线。' : s.energy >= 100 ? '光能已满！点「银河终结」释放必杀技。' : s.energy >= 30 ? '光线已就绪；也可以继续攒到 100 光能使用终结技。' : '点「银河拳」积攒光能，达到 30 后可释放光线。';
+    const hint = !started ? '先观察怪兽招式，再开始守护。' : s.status === 'ended' ? '行动完成，查看本次复盘。' : s.paused ? '战斗已暂停，所有技能计时冻结。' : s.assistAvailable ? '最后的光！点召唤伙伴：耗尽光能、恢复生命、并肩作战。' : s.shieldRemaining > 0 ? '伙伴护盾正在保护你，趁现在出拳攒光能；30 光能可联合攻击！' : s.defending ? '已架起 X 防御，等冲击落下；出拳或闪避会解除防御。' : s.currentAttack ? s.attackRemaining <= s.perfectWindow ? '现在点「X 防御」！绿色末段可完美格挡。' : '橙色预警：点「X 防御」稳住，也可以等绿色末段再格挡。' : s.cooldown > 0 ? '攻击正在冷却，读秒结束后再出招；X 防御随时可用。' : s.ally.active && s.energy >= ASSIST_RULES.linkCost && s.linkCooldown === 0 ? '你们的光汇聚了！按 6 发动三人同步必杀。' : s.energy >= 100 ? '光能已满！点「银河终结」释放必杀技。' : s.energy >= 30 ? '光线已就绪；也可以继续攒到 100 光能使用终结技。' : '点「银河拳」积攒光能，达到 30 后可释放光线。';
     setText(elements.actionHint, hint);
     elements.actionHint.dataset.tone = s.currentAttack || s.defending ? 'guard' : 'attack';
     for (const button of elements.actions) {
@@ -375,11 +420,11 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
   }
 
   function alignBeams() {
-    const rays = [[elements.beam, elements.hero], [elements.allyBeam, elements.ally]].filter(([beam, actor]) => actor && beam.classList.contains('active'));
-    if (!rays.length) return;
+    const rays = [[elements.beam, elements.hero], [elements.allyBeam, elements.ally], [elements.secondAllyBeam, elements.secondAlly]].filter(([beam, actor]) => actor && beam.classList.contains('active'));
+    if (!rays.length && !elements.burst.classList.contains('active')) return;
     const arena = elements.arena.getBoundingClientRect();
     const target = new DOMPoint(180, 225).matrixTransform(elements.monster.querySelector('.monster-rig').getScreenCTM());
-    // Follow the actual animated wrists, so both rays connect at every size.
+    // Each ray follows its own animated wrist, including after an iPad rotation.
     const geometry = rays.map(([beam, actor]) => {
       const hand = new DOMPoint(235, 213).matrixTransform(actor.querySelector('.hero-beam-flare').getScreenCTM());
       const dx = target.x - hand.x, dy = target.y - hand.y;
@@ -389,23 +434,26 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
       beam.style.left = `${x}px`; beam.style.top = `${y}px`; beam.style.width = `${width}px`;
       beam.style.setProperty('--ray-angle', `${angle}rad`);
     }
+    elements.burst.style.left = `${target.x - arena.x}px`;
+    elements.burst.style.top = `${target.y - arena.y}px`;
   }
 
-  function renderAssist(s) {
+  function renderAssist(s, linkedVisual = false) {
     if (s.ally.summoned) revealAlly();
-    if (elements.ally) elements.ally.dataset.pose = s.ally.pose;
+    if (elements.ally) elements.ally.dataset.pose = linkedVisual ? 'beam' : s.ally.pose;
+    if (elements.secondAlly) elements.secondAlly.dataset.pose = linkedVisual ? 'beam' : s.secondAlly.pose;
     elements.arena.dataset.assist = s.ally.summoned ? 'active' : 'waiting';
     elements.barrier.classList.toggle('visible', s.shieldRemaining > 0);
     const critical = s.status === 'active' && !s.ally.summoned && s.heroHp <= s.heroMaxHp * ASSIST_RULES.hpThreshold;
     elements.allyStatus.dataset.state = s.ally.summoned ? 'active' : critical ? 'critical' : 'waiting';
-    const title = s.ally.summoned ? s.status === 'ended' ? '银河 × 迪迦 · 并肩到最后' : '迪迦已加入 · 双人守护' : critical ? '不要放弃！迪迦听见了呼唤' : '最后的光 · 迪迦待命';
-    const copy = s.ally.summoned ? s.shieldRemaining > 0 ? `登场护盾 ${cooldownTime(s.shieldRemaining)}s · 正在保护你` : s.status === 'ended' ? '这份勇气，也有伙伴的力量。' : '迪迦自动出击 · 攒够 30 光能按 6 合击' : critical ? s.energy >= ASSIST_RULES.minEnergy ? `按 6 耗尽 ${Math.floor(s.energy)} 光能，恢复生命并召唤伙伴` : `还差 ${Math.ceil(ASSIST_RULES.minEnergy - s.energy)} 光能 · 出拳或防御后求援` : '生命 ≤30% · 至少 10 光能 · 每场一次';
+    const title = s.ally.summoned ? s.status === 'ended' ? '银河 × 迪迦 × 赛罗 · 并肩到最后' : '迪迦、赛罗已加入 · 三人守护' : critical ? '不要放弃！伙伴听见了呼唤' : '最后的光 · 迪迦与赛罗待命';
+    const copy = s.ally.summoned ? s.shieldRemaining > 0 ? `登场护盾 ${cooldownTime(s.shieldRemaining)}s · 正在保护你` : s.status === 'ended' ? '这份勇气，也有伙伴的力量。' : '迪迦、赛罗自动出击 · 攒够 30 光能按 6 合击' : critical ? s.energy >= ASSIST_RULES.minEnergy ? `按 6 耗尽 ${Math.floor(s.energy)} 光能，恢复生命并召唤伙伴` : `还差 ${Math.ceil(ASSIST_RULES.minEnergy - s.energy)} 光能 · 出拳或防御后求援` : '生命 ≤30% · 至少 10 光能 · 每场一次';
     setText(elements.allyName, title);
     setText(elements.allyCopy, copy);
     if (s.assistAvailable && !assistPrompted && started && !s.paused) {
       assistPrompted = true;
-      announce('生命危急！按 6 或点召唤迪迦，用最后的光能呼唤伙伴！');
-      callout('最后的光 · 按 6 召唤迪迦', 'assist-callout');
+      announce('生命危急！按 6 或点召唤伙伴，用最后的光能呼唤伙伴！');
+      callout('最后的光 · 点召唤伙伴', 'assist-callout');
     }
   }
 
@@ -419,11 +467,11 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
     button.classList.toggle('is-ready', !button.disabled);
     button.classList.toggle('is-unavailable', started && !s.paused && s.status === 'active' && button.disabled);
     button.classList.toggle('is-rescue-ready', !linked && !button.disabled);
-    const title = linked ? '联合光线' : '召唤迪迦';
-    const label = linked ? cooldown > 0 ? `冷却 ${cooldownTime(cooldown)}s` : shortfall > 0 ? `还差 ${shortfall} 光能` : '双人合击 · 30' : !critical ? '生命 ≤30% 解锁' : shortfall > 0 ? `还差 ${shortfall} 光能` : `耗尽 ${Math.floor(s.energy)} 光能`;
+    const title = linked ? '三重必杀' : '召唤伙伴';
+    const label = linked ? cooldown > 0 ? `冷却 ${cooldownTime(cooldown)}s` : shortfall > 0 ? `还差 ${shortfall} 光能` : '三人合击 · 30' : !critical ? '生命 ≤30% 解锁' : shortfall > 0 ? `还差 ${shortfall} 光能` : `耗尽 ${Math.floor(s.energy)} 光能`;
     setText(button.querySelector('strong'), title);
     setText(button.querySelector('span'), label);
-    button.title = linked ? '与迪迦一起释放光线，消耗 30 光能，造成 54 点伤害，冷却 8 秒' : '生命不高于 30% 且至少 10 光能时，耗尽光能召唤迪迦；恢复 25% 生命并获得 3 秒护盾，每场一次';
+    button.title = linked ? '银河、迪迦和赛罗同时释放必杀光线，消耗 30 光能，造成 84 点伤害，冷却 8 秒' : '生命不高于 30% 且至少 10 光能时，耗尽光能召唤迪迦和赛罗；恢复 25% 生命并获得 3 秒护盾，每场一次';
     button.setAttribute('aria-label', `${title}，${label}`);
     button.querySelector('.action-cooldown').style.transform = `scaleX(${Math.min(1, cooldown / ASSIST_RULES.linkCooldown)})`;
   }
@@ -441,7 +489,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
     if (result.summons > 0) {
       const summary = document.createElement('p');
       summary.className = 'battle-result-assist';
-      summary.textContent = `✧ 迪迦并肩作战 · 自动攻击 ${result.allyHits} 次 · 联合光线 ${result.linkAttacks} 次`;
+      summary.textContent = `✧ 迪迦 + 赛罗并肩作战 · 自动攻击 ${result.allyHits} 次 · 三重必杀 ${result.linkAttacks} 次`;
       elements.resultOverlay.querySelector('.battle-review').before(summary);
     }
     elements.readyOverlay.hidden = true;
@@ -493,6 +541,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
     notifyResult(result);
     closed = true;
     cancelAnimationFrame(frameId);
+    arenaResize.disconnect();
     for (const id of timers) clearTimeout(id);
     document.removeEventListener('visibilitychange', visibility);
     window.removeEventListener('pagehide', pagehide);
@@ -513,10 +562,10 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
     processEvents();
     if (!result.ok && result.reason === 'energy') announce(`光能还差 ${Math.ceil(result.required - s.energy)} 点。先用重拳或格挡积攒光能。`);
     else if (!result.ok && ['cooldown', 'dodge-cooldown'].includes(result.reason)) announce(`技能冷却还剩 ${cooldownTime(result.reason === 'dodge-cooldown' ? s.dodgeCooldown : s.cooldown)} 秒。`);
-    else if (!result.ok && result.reason === 'assist-health') announce('迪迦的援护会在生命不高于 30% 时开放。现在先继续守护！');
-    else if (!result.ok && result.reason === 'assist-used') announce('本场已经召唤过迪迦，攒够 30 光能后按 6 发动联合光线。');
-    else if (!result.ok && result.reason === 'assist-inactive') announce('先在生命危急时召唤迪迦，才能一起释放光线。');
-    else if (!result.ok && result.reason === 'link-cooldown') announce(`联合光线还需 ${cooldownTime(s.linkCooldown)} 秒，迪迦会继续自动攻击。`);
+    else if (!result.ok && result.reason === 'assist-health') announce('伙伴援护会在生命不高于 30% 时开放。现在先继续守护！');
+    else if (!result.ok && result.reason === 'assist-used') announce('本场已经召唤过伙伴，攒够 30 光能后按 6 发动联合光线。');
+    else if (!result.ok && result.reason === 'assist-inactive') announce('先在生命危急时召唤伙伴，才能一起释放光线。');
+    else if (!result.ok && result.reason === 'link-cooldown') announce(`联合光线还需 ${cooldownTime(s.linkCooldown)} 秒，迪迦和赛罗会继续自动攻击。`);
     render();
   }
 

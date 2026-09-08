@@ -1,0 +1,64 @@
+/* Growth is a response from the companion, never a blocking reward dialog. */
+.growth-reaction { position:absolute; inset:0; z-index:6; pointer-events:none; }
+.growth-reaction[hidden] { display:none; }
+.growth-reaction-badge { position:absolute; left:50%; bottom:83px; transform:translateX(-50%); display:flex; align-items:center; gap:10px; width:max-content; max-width:calc(100% - 36px); box-sizing:border-box; padding:11px 14px; border:1px solid #b9efd98c; border-radius:14px; background:linear-gradient(120deg,#153d3ef5,#1b434df2); color:#e0f9e9; box-shadow:0 8px 24px #06202b66,inset 0 1px #deffe927; animation:growth-badge-arrive .45s ease-out both; }
+.growth-reaction-emblem { display:grid; place-items:center; flex:none; width:34px; height:34px; color:#cffadf; border:1px solid #bceec653; border-radius:50%; font-size:29px; }
+.growth-reaction-copy { min-width:0; display:grid; gap:4px; }
+.growth-reaction-copy small { color:#a5cfc1; font-size:10px; line-height:1.4; }
+.growth-reaction-copy strong { font-size:15px; line-height:1.3; font-weight:650; overflow-wrap:anywhere; }
+.growth-reaction-xp { flex:none; font-size:14px; font-weight:650; color:#bbfbd8; padding-left:10px; border-left:1px solid #bceec63b; }
+.growth-reaction[data-kind="levelup"] .growth-reaction-badge { background:linear-gradient(120deg,#37433df7,#224445f7); border-color:#ead8a0ab; box-shadow:0 8px 28px #08212877,inset 0 1px #fff3c13b; }
+.growth-reaction[data-kind="levelup"] .growth-reaction-emblem, .growth-reaction[data-kind="levelup"] .growth-reaction-xp { color:#ffe9b0; }
+.growth-reaction-halo { position:absolute; width:280px; height:280px; left:50%; top:54%; transform:translate(-50%,-50%); }
+.growth-reaction-halo i { position:absolute; inset:15%; border:1px solid #b4eed344; border-radius:50%; animation:growth-ring-open 2.8s ease-out both; }
+.growth-reaction-halo i:nth-child(2) { inset:7%; animation-delay:.3s; }
+.growth-reaction-halo b { position:absolute; left:calc(14% + var(--spark) * 10%); top:45%; color:#d0f7da; font-size:14px; font-weight:400; opacity:0; animation:growth-star-rise 2.4s ease-out calc(var(--spark) * .12s) both; }
+/* Explicit positions are understood by older iPadOS Safari, too. */
+.growth-reaction-halo b:nth-of-type(3n + 1) { top:70%; }
+.growth-reaction-halo b:nth-of-type(3n + 2) { top:45%; }
+.growth-reaction-halo b:nth-of-type(3n) { top:26%; }
+.growth-reaction[data-kind="levelup"] .growth-reaction-halo { background:radial-gradient(ellipse,#f5df9a25,transparent 66%); }
+.growth-reaction[data-kind="levelup"] .growth-reaction-halo i { border-color:#f1d5947a; }
+.growth-reaction[data-kind="levelup"] .growth-reaction-halo b { color:#ffe9ac; font-size:18px; }
+#habitat[data-growth-reaction] #speech { white-space:normal; width:max-content; max-width:calc(100% - 40px); box-sizing:border-box; }
+#petHero[data-pose="salute"] .hero-rig { animation:companion-proud 2.4s ease-in-out both; }
+#petHero[data-pose="salute"] .hero-right-arm { animation:companion-salute 2.4s ease-in-out both; }
+#petHero[data-pose="salute"] .hero-left-arm { animation:none; transform:rotate(15deg); }
+#petHero[data-pose="salute"] .hero-head { animation:companion-thank-you 2.4s ease-in-out both; }
+#petHero[data-pose="levelup"] .hero-rig { animation:companion-level-rise 3.2s ease-in-out both; }
+#petHero[data-pose="levelup"] .hero-left-arm { animation:companion-level-left 3.2s ease-in-out both; }
+#petHero[data-pose="levelup"] .hero-right-arm { animation:companion-level-right 3.2s ease-in-out both; }
+#petHero[data-pose="levelup"] .hero-power-aura { animation:companion-soft-aura 3.2s ease-in-out both; }
+#petHero[data-pose="nod"] .hero-head { animation:companion-friendly-nod 1.35s ease-in-out both; }
+#petHero[data-pose="nod"] .hero-heart { animation:heart-rise 1.4s ease-out both; }
+#petHero[data-pose="nod"] .hero-right-arm { animation:companion-small-wave 1.35s ease-in-out both; }
+@keyframes growth-badge-arrive { from { opacity:0; margin-bottom:-10px; } to { opacity:1; margin-bottom:0; } }
+@keyframes growth-ring-open { 0% { opacity:0; transform:scale(.5); } 28% { opacity:.8; } 100% { opacity:0; transform:scale(1.2); } }
+@keyframes growth-star-rise { 0% { opacity:0; transform:translateY(20px) scale(.5); } 30% { opacity:.8; } 100% { opacity:0; transform:translateY(-65px) scale(.85) rotate(35deg); } }
+@keyframes companion-proud { 0%,100% { transform:translateY(0); } 25%,75% { transform:translateY(-5px) scale(1.015); } }
+@keyframes companion-salute { 0%,100% { transform:rotate(0); } 22%,74% { transform:rotate(-145deg) scaleY(.9); } }
+@keyframes companion-thank-you { 0%,100% { transform:rotate(0); } 28%,66% { transform:rotate(-5deg); } }
+@keyframes companion-level-rise { 0%,100% { transform:translateY(0) scale(1); } 32%,60% { transform:translateY(-15px) scale(1.035); } 78% { transform:translateY(2px) scaleY(.99); } }
+@keyframes companion-level-left { 0%,100% { transform:rotate(0); } 28%,64% { transform:rotate(75deg); } 80% { transform:rotate(20deg); } }
+@keyframes companion-level-right { 0%,100% { transform:rotate(0); } 28%,58% { transform:rotate(-75deg); } 75%,90% { transform:rotate(-138deg); } }
+@keyframes companion-soft-aura { 0%,100% { opacity:0; transform:scale(.8); } 32%,64% { opacity:.6; transform:scale(1.05); } }
+@keyframes companion-friendly-nod { 0%,100% { transform:rotate(0); } 30% { transform:translateY(5px) rotate(-7deg); } 65% { transform:translateY(-2px) rotate(5deg); } }
+@keyframes companion-small-wave { 0%,100% { transform:rotate(0); } 30%,65% { transform:rotate(-105deg); } 48% { transform:rotate(-120deg); } }
+@media (max-width:450px) {
+  .growth-reaction-badge { bottom:75px; gap:8px; padding:9px 11px; }
+  .growth-reaction-copy strong { font-size:13px; }
+  .growth-reaction-copy small { font-size:9px; }
+  .growth-reaction-emblem { width:28px; height:28px; font-size:24px; }
+  .growth-reaction-xp { padding-left:8px; font-size:12px; }
+  .growth-reaction-halo { width:230px; height:230px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .growth-reaction *, #petHero[data-pose="salute"] .character-art *,
+  #petHero[data-pose="levelup"] .character-art *, #petHero[data-pose="nod"] .character-art * { animation:none !important; }
+  .growth-reaction-halo b { opacity:.6; }
+  .growth-reaction-halo i { opacity:.6; }
+  #petHero[data-pose="salute"] .hero-right-arm { transform:rotate(-130deg); }
+  #petHero[data-pose="levelup"] .hero-left-arm { transform:rotate(65deg); }
+  #petHero[data-pose="levelup"] .hero-right-arm { transform:rotate(-65deg); }
+  #petHero[data-pose="levelup"] .hero-power-aura { opacity:.4; }
+}

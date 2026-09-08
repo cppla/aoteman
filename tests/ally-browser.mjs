@@ -46,6 +46,7 @@ async function ui() {
       warning: Number.parseFloat(document.querySelector('.warning-time').textContent),
       heroPose: document.querySelector('.battle-arena > .hero-actor').dataset.pose,
       allyPose: document.querySelector('.ally-actor')?.dataset.pose,
+      secondAllyPose: document.querySelector('.second-ally-actor')?.dataset.pose,
       punch: available('punch'), beam: available('beam'), defend: available('defend'),
       summon: available('summon'), link: available('link'),
     };
@@ -71,6 +72,7 @@ async function beamAlignment() {
     resolve([
       ['main', '.battle-beam', '.battle-arena > .hero-actor'],
       ['ally', '.ally-beam', '.ally-actor'],
+      ['second-ally', '.second-ally-beam', '.second-ally-actor'],
     ].map(([name, beamSelector, actorSelector]) => {
       const beam = document.querySelector(beamSelector);
       const style = getComputedStyle(beam);
@@ -104,7 +106,8 @@ try {
   await page.click('#fightBtn');
   await page.locator('[data-command="start"]').click();
   assert.equal(await page.locator('[data-action="summon"]').isDisabled(), true, 'A healthy hero cannot request emergency rescue');
-  assert.equal(await page.locator('.ally-slot').isVisible(), false, 'The partner does not appear before a summon');
+  assert.equal(await page.locator('.ally-slot').isVisible(), false, 'The first partner does not appear before a summon');
+  assert.equal(await page.locator('.second-ally-slot').isVisible(), false, 'The second partner does not appear before a summon');
 
   // Save a little light energy, then take genuine enemy hits. No engine handle,
   // localStorage mutation, injected HP, or write to the save API is used here.
@@ -127,7 +130,11 @@ try {
   assert.equal(rescued.assist, 'active');
   assert.notEqual(rescued.phase, 'warning', 'Arrival cancels the monster attack already being prepared');
   assert.equal(await page.locator('.ally-slot').isVisible(), true);
-  assert.equal(await page.locator('.ally-actor svg').count(), 1, 'The ally has a separate visible character');
+  assert.equal(await page.locator('.ally-actor svg').count(), 1, 'Tiga has a separate visible character');
+  assert.equal(await page.locator('.second-ally-slot').isVisible(), true);
+  assert.equal(await page.locator('.second-ally-actor svg').count(), 1, 'Zero has a second separate visible character');
+  assert.match(await page.locator('.ally-status').textContent(), /迪迦/);
+  assert.match(await page.locator('.ally-status').textContent(), /赛罗/);
   assert.equal(await page.locator('.battle-arena > .hero-actor').count(), 1);
   assert.equal(await page.locator('[data-action="summon"]').count(), 0, 'The once-per-battle summon turns into the joint attack control');
   assert.equal(await page.locator('[data-action="link"]').isDisabled(), true, 'Joint beam requires replenishing light energy');
@@ -147,6 +154,9 @@ try {
   assert.equal(allyHit.monsterHp, paused.monsterHp - 12, 'The partner punches automatically without a player attack');
   assert.equal(allyHit.heroHp, rescued.heroHp, 'The rescue window protects the recovering hero');
 
+  const secondAllyHit = await waitForUi(state => state.monsterHp < allyHit.monsterHp, 3000);
+  assert.equal(secondAllyHit.monsterHp, allyHit.monsterHp - 14, 'Zero attacks independently after Tiga without player input');
+
   while (!(await ui()).link) {
     await waitForUi(state => state.punch || state.link);
     if ((await ui()).link) break;
@@ -154,15 +164,17 @@ try {
   }
   const beforeLink = await ui();
   assert.ok(beforeLink.energy >= 30);
-  assert.ok(beforeLink.monsterHp > 54, 'The joint attack is exercised before the finishing blow');
+  assert.ok(beforeLink.monsterHp > 84, 'The joint attack is exercised before the finishing blow');
   await page.keyboard.press('6'); actions.link++;
   const linked = await ui();
   assert.equal(linked.energy, beforeLink.energy - 30);
-  assert.ok(linked.monsterHp <= beforeLink.monsterHp - 54, 'The two-hero beam deals real combat damage');
+  assert.ok(linked.monsterHp <= beforeLink.monsterHp - 84, 'The three-hero beam deals real combat damage');
   assert.equal(linked.heroPose, 'beam');
   assert.equal(linked.allyPose, 'beam');
+  assert.equal(linked.secondAllyPose, 'beam');
   assert.equal(await page.locator('.battle-beam.active').count(), 1);
-  assert.equal(await page.locator('.ally-beam.active').count(), 1, 'Both beam effects appear for the coordinated attack');
+  assert.equal(await page.locator('.ally-beam.active').count(), 1);
+  assert.equal(await page.locator('.second-ally-beam.active').count(), 1, 'All three beam effects appear for the coordinated attack');
   const desktopRays = await beamAlignment();
   assertAligned(desktopRays, '1440px');
   await page.locator('.battle-dialog').screenshot({ path: new URL('joint-beam.png', output).pathname });
@@ -175,7 +187,8 @@ try {
   assert.equal(jointPaused.paused, true);
   await page.waitForTimeout(1100);
   assert.equal(await page.locator('.battle-beam.active').count(), 1, 'The main beam survives a pause longer than its normal animation');
-  assert.equal(await page.locator('.ally-beam.active').count(), 1, 'The ally beam survives the same pause');
+  assert.equal(await page.locator('.ally-beam.active').count(), 1, 'Tiga’s beam survives the same pause');
+  assert.equal(await page.locator('.second-ally-beam.active').count(), 1, 'Zero’s beam survives the same pause');
   const jointStillPaused = await ui();
   assert.equal(jointStillPaused.monsterHp, jointPaused.monsterHp);
   assert.equal(jointStillPaused.heroHp, jointPaused.heroHp);
@@ -247,7 +260,8 @@ try {
       const ids = [...dialog.querySelectorAll('[id]')].map(element => element.id);
       return {
         noOverflow: dialog.scrollWidth <= dialog.clientWidth,
-        arena: box('.battle-arena'), hero: box('.battle-arena > .hero-actor'), ally: box('.ally-slot'),
+        arena: box('.battle-arena'), hero: box('.battle-arena > .hero-actor'), ally: box('.ally-slot'), secondAlly: box('.second-ally-slot'),
+        allyPaint: box('.ally-actor .hero-rig'), secondAllyPaint: box('.second-ally-actor .hero-rig'),
         action: box('[data-action="link"]'), distinctIds: new Set(ids).size === ids.length,
         reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
       };
@@ -255,16 +269,21 @@ try {
     assert.equal(layout.noOverflow, true, `No horizontal dialog overflow at ${width}px`);
     assert.equal(layout.distinctIds, true, 'The main hero and ally SVG paint IDs do not collide');
     assert.ok(layout.ally.width > 30 && layout.ally.height > 30, 'The ally remains visible on a small screen');
-    assert.ok(layout.ally.x >= layout.arena.x - 1 && layout.ally.x + layout.ally.width <= layout.arena.x + layout.arena.width + 1, 'The ally stays within the arena');
+    assert.ok(layout.allyPaint.x >= layout.arena.x - 1 && layout.allyPaint.x + layout.allyPaint.width <= layout.arena.x + layout.arena.width + 1, 'The visible ally silhouette stays within the arena despite transparent SVG padding');
     assert.ok(Math.abs((layout.hero.x + layout.hero.width / 2) - (layout.ally.x + layout.ally.width / 2)) > layout.arena.width * 0.05, 'The two heroes occupy distinct positions');
-    assert.ok(layout.action.height >= 42, 'The joint control remains a usable touch target');
+    assert.ok(layout.action.height >= 44, 'The joint control remains a usable touch target');
+    assert.ok(layout.secondAlly.width > 30 && layout.secondAlly.height > 30, 'Zero remains visible on a small screen');
+    assert.ok(layout.secondAllyPaint.x >= layout.arena.x - 1 && layout.secondAllyPaint.x + layout.secondAllyPaint.width <= layout.arena.x + layout.arena.width + 1, 'Zero’s visible silhouette stays within the arena');
+    const centers = [layout.hero, layout.ally, layout.secondAlly].map(box => [box.x + box.width / 2, box.y + box.height / 2]);
+    for (let i = 0; i < centers.length; i++) for (let j = i + 1; j < centers.length; j++) assert.ok(Math.hypot(centers[i][0] - centers[j][0], centers[i][1] - centers[j][1]) > layout.arena.width * 0.05, 'Each of the three heroes occupies a distinct position');
     assert.equal(layout.reducedMotion, true);
-    await page.screenshot({ path: new URL(`duo-${width}.png`, output).pathname, fullPage: true });
+    await page.screenshot({ path: new URL(`trio-${width}.png`, output).pathname, fullPage: true });
     await page.evaluate(() => {
       const engine = window.battleHandle.engine;
-      while (engine.snapshot().energy < 30) {
+      for (let attempt = 0; attempt < 12 && engine.snapshot().energy < 30; attempt++) {
         engine.step(Math.max(600, engine.snapshot().cooldown));
-        engine.act('punch');
+        const charge = engine.act('punch');
+        if (!charge.ok) throw new Error(`Unable to charge joint beam layout: ${charge.reason}`);
       }
       engine.step(engine.snapshot().cooldown);
       engine.drainEvents();
@@ -274,6 +293,7 @@ try {
     await page.waitForFunction(() => document.querySelector('.ally-beam').classList.contains('active'));
     assert.equal(await page.locator('.battle-arena > .hero-actor').getAttribute('data-pose'), 'beam');
     assert.equal(await page.locator('.ally-actor').getAttribute('data-pose'), 'beam');
+    assert.equal(await page.locator('.second-ally-actor').getAttribute('data-pose'), 'beam');
     layout.rays = await beamAlignment();
     assertAligned(layout.rays, `${width}px`);
     await page.screenshot({ path: new URL(`joint-${width}.png`, output).pathname, fullPage: true });
@@ -284,10 +304,10 @@ try {
   assert.deepEqual(errors, [], 'The real rescue and responsive layouts produce no page exceptions');
   await writeFile(new URL('verification.json', output), JSON.stringify({
     result: 'pass', testedAt: new Date().toISOString(), actions,
-    charged, critical, beforeSummon, rescued, paused, stillPaused, allyHit, beforeLink, linked, desktopRays, jointPaused, jointStillPaused,
+    charged, critical, beforeSummon, rescued, paused, stillPaused, allyHit, secondAllyHit, beforeLink, linked, desktopRays, jointPaused, jointStillPaused,
     before: growth(initial), resultStillOpen: growth(rewarded), afterRefresh: growth(refreshed), layouts,
   }, null, 2));
-  console.log('PASS: real low-HP rescue interrupts a warning, consumes remaining energy, heals and protects; separate ally auto-attacks; pause freezes both heroes; joint beam deals damage; SQLite records one victory before closing and survives refresh; 375/430/768px two-hero layouts remain usable.');
+  console.log('PASS: real low-HP rescue interrupts a warning, consumes remaining energy, heals and protects; two separate allies attack independently; pause freezes all three heroes; joint beam deals damage; SQLite records one victory before closing and survives refresh; 375/430/768px three-hero layouts remain usable.');
 } catch (error) {
   await page.screenshot({ path: new URL('failure.png', output).pathname, fullPage: true }).catch(() => {});
   throw new Error(scrub(error.stack || error.message));
