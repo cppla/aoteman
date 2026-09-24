@@ -138,7 +138,7 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
     warningTime: $('.warning-time'), warningFill: $('.warning-progress > span'), perfectZone: $('.warning-progress > i'),
     combo: $('.battle-combo'), comboValue: $('.battle-combo b'), clock: $('.battle-clock'),
     pause: $('[data-command="pause"]'), readyOverlay: $('.ready-overlay'), pauseOverlay: $('.pause-overlay'),
-    resultOverlay: $('.result-overlay'), log: $('.battle-log'), callout: $('.battle-callout'),
+    resultOverlay: $('.result-overlay'), log: $('.battle-log'), callout: $('.battle-callout'), damageNumbers: $('.damage-numbers'),
     beam: $('.battle-beam'), projectile: $('.enemy-projectile'), impact: $('.battle-impact'),
     allySlot: $('.ally-slot'), ally: null, allyBeam: $('.ally-beam'), barrier: $('.assist-barrier'),
     secondAllySlot: $('.second-ally-slot'), secondAlly: null, secondAllyBeam: $('.second-ally-beam'), burst: $('.strike-burst'),
@@ -202,17 +202,24 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
     const number = document.createElement('span');
     number.className = `damage-number ${target} ${kind}`;
     number.textContent = text;
-    $('.damage-numbers').append(number);
+    elements.damageNumbers.append(number);
     if (target === 'hero') {
-      // Summoning moves the player into the front lane. Anchor feedback to
-      // that hero, so healing and damage never appear on a support partner.
-      const arena = elements.arena.getBoundingClientRect();
-      const head = elements.hero.querySelector('.hero-head').getBoundingClientRect();
-      number.style.left = `${head.x + head.width / 2 - arena.x}px`;
-      number.style.top = `${Math.max(78, head.y - arena.y - 18)}px`;
       number.style.translate = '-50% 0';
+      alignHeroFeedback();
     }
     later(() => number.remove(), 1200);
+  }
+
+  function alignHeroFeedback() {
+    const numbers = elements.damageNumbers.querySelectorAll('.damage-number.hero');
+    if (!numbers.length) return;
+    const arena = elements.arena.getBoundingClientRect();
+    // Clipped images retain full-source bounds; use the actual face anchor.
+    const head = (elements.hero.querySelector('.hero-head-anchor') || elements.hero.querySelector('.hero-head')).getBoundingClientRect();
+    for (const number of numbers) {
+      number.style.left = `${head.x + head.width / 2 - arena.x}px`;
+      number.style.top = `${Math.max(4, head.y - arena.y - number.offsetHeight - 20)}px`;
+    }
   }
 
   function revealAlly() {
@@ -417,6 +424,8 @@ export function openBattle({ monsterId = 'obsidian', difficulty = 'normal', hero
     // inside the dialog after a mouse/touch action starts its cooldown.
     if (focusedAction?.disabled) dialog.focus({ preventScroll: true });
     alignBeams();
+    // Arrival, recoil and rotation can move the real suit while text floats.
+    alignHeroFeedback();
   }
 
   function alignBeams() {

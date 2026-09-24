@@ -437,6 +437,10 @@
 @keyframes ultimate-speed { 0% { opacity: 0; transform: translateX(-7%); } 20%, 65% { opacity: .8; } 100% { opacity: 0; transform: translateX(7%); } }
 
 /* Safari's dynamic viewport keeps every control above its browser chrome. */
+@media (min-width: 1100px) {
+  /* Keep the warning between the front hero and monster in a short arena. */
+  .battle-arena[data-assist="active"] .battle-warning { left: 65%; width: min(390px, 34%); }
+}
 @media (min-width: 561px) {
   .battle-dialog { width: min(1180px, calc(100vw - 24px)); max-width: 1180px; height: min(980px, calc(100vh - 24px)); height: min(980px, calc(100dvh - 24px)); max-height: calc(100dvh - 24px); overflow: hidden; }
   .battle-shell { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; height: 100%; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }

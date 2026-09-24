@@ -1,4 +1,6 @@
-/* Sculpted toy-like SVGs; each animated limb retains its own shoulder pivot. */
+@import url('./ginga-character.css');
+
+/* Shared character motion. Ginga overrides pivots for the television suit proportions. */
 .actor .character-art { display: block; width: 100%; height: 100%; overflow: visible; user-select: none; }
 .character-art * { transform-box: fill-box; }
 .hero-rig, .monster-rig { transform-origin: 50% 100%; will-change: transform; }

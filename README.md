@@ -2,11 +2,17 @@
 
 可以陪伴、养成和战斗的奥特曼电子宠物。前端使用原生 JavaScript、SVG 和 CSS 动画；Nginx 提供网页和 API 入口，Python + SQLite 在服务器保存成长进度。
 
-![星光基地](docs/screenshots/base.png)
+## 本轮更新 · v6.1：电视剧银河造型
 
-![交叉双臂的 X 防御](docs/screenshots/battle.png)
+主角改用[圆谷官方银河角色页](https://tsuburaya-prod.com/heroes/ultraman-ginga)的真人皮套全身照片：真人身形比例、青蓝头冠、圆形计时器、宽 U 形胸部水晶以及前臂和小腿水晶均保留。图片随应用部署，游玩时无需连接第三方图片网站。
 
-## 本轮更新 · v6：三位英雄，一起发光
+待机保持官方图片完整；游戏通过分层角色动画呈现挥手、训练、X 交叉防御、光线和成长回应。动作属于游戏动画，不是电视剧视频片段。图片来源、原始字节和权利归属见 [人物素材说明](public/assets/ginga/README.md)。
+
+本轮使用临时 SQLite 原生服务器完成验证，未运行本地 Docker；验证范围见 [v6.1 验证记录](docs/validation-v6.1.md)。
+
+![电视剧造型的银河伙伴](docs/screenshots/ginga-realistic.png)
+
+## v6：三位英雄，一起发光
 
 濒危时可以同时召唤 **迪迦与赛罗**，和你操控的银河组成三人小队。两名伙伴各自出拳、释放光线；三重必杀让三位奥特曼同时摆出必杀姿势，三束不同颜色的光线从各自手腕汇聚到怪兽身上。
 
@@ -279,6 +285,7 @@ pnpm test:battle-polish
 pnpm test:ally
 pnpm test:ipad
 pnpm test:growth-reactions
+pnpm test:ginga
 # 指定其他隔离测试地址：BASE_URL=http://localhost:8890 pnpm test:sync-browser
 ```
 

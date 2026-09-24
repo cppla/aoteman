@@ -115,7 +115,8 @@ async function heroFeedbackAnchor(page, selector, label) {
   await page.locator(selector).last().waitFor({ state: 'visible' });
   const anchor = await page.evaluate(selector => {
     const number = [...document.querySelectorAll(selector)].at(-1).getBoundingClientRect();
-    const head = document.querySelector('.battle-arena > .hero-actor .hero-head').getBoundingClientRect();
+    const hero = document.querySelector('.battle-arena > .hero-actor');
+    const head = (hero.querySelector('.hero-head-anchor') || hero.querySelector('.hero-head')).getBoundingClientRect();
     const second = document.querySelector('.second-ally-actor .hero-head')?.getBoundingClientRect();
     const numberCenter = number.x + number.width / 2, heroCenter = head.x + head.width / 2;
     return { numberCenter, heroCenter, centerError: Math.abs(numberCenter - heroCenter), secondAllyCenter: second ? second.x + second.width / 2 : null };

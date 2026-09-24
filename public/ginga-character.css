@@ -1,0 +1,101 @@
+/* Photo parts use the photograph's 403 × 948 coordinate system. */
+.ginga-art .ginga-photo-space { overflow:visible; }
+.ginga-art .hero-rig { transform-box:view-box; transform-origin:180px 394px; animation:ginga-breathe 4s ease-in-out infinite; }
+.ginga-art .ginga-segmented { visibility:hidden; }
+.ginga-art .hero-left-arm, .ginga-art .hero-right-arm,
+.ginga-art .hero-left-leg, .ginga-art .hero-right-leg,
+.ginga-art .ginga-left-forearm, .ginga-art .ginga-right-forearm,
+.ginga-art .hero-head { transform-box:view-box; animation:none; }
+.ginga-art .hero-left-arm { transform-origin:96px 223px; }
+.ginga-art .hero-right-arm { transform-origin:307px 223px; }
+.ginga-art .ginga-left-forearm { transform-origin:72px 332px; }
+.ginga-art .ginga-right-forearm { transform-origin:331px 332px; }
+.ginga-art .hero-left-leg { transform-origin:168px 517px; }
+.ginga-art .hero-right-leg { transform-origin:236px 517px; }
+.ginga-art .hero-head { transform-origin:202px 180px; }
+.ginga-art .hero-beam-flare { opacity:0; transform-box:view-box; transform-origin:235px 213px; }
+.ginga-art .hero-crystal .crystal-halo { animation:ginga-crystal 3s ease-in-out infinite; }
+.hero-actor:is([data-pose="wave"],[data-pose="eat"],[data-pose="train"],[data-pose="transform"],[data-pose="punch"],[data-pose="beam"],[data-pose="defend"],[data-pose="victory"],[data-pose="charge"],[data-pose="salute"],[data-pose="levelup"],[data-pose="nod"]) .ginga-art .ginga-idle-photo { visibility:hidden; }
+.hero-actor:is([data-pose="wave"],[data-pose="eat"],[data-pose="train"],[data-pose="transform"],[data-pose="punch"],[data-pose="beam"],[data-pose="defend"],[data-pose="victory"],[data-pose="charge"],[data-pose="salute"],[data-pose="levelup"],[data-pose="nod"]) .ginga-art .ginga-segmented { visibility:visible; }
+.hero-actor[data-pose="wave"] .ginga-art .hero-right-arm { animation:ginga-wave-upper 1.3s ease-in-out infinite; }
+.hero-actor[data-pose="wave"] .ginga-art .ginga-right-forearm { animation:ginga-wave-hand 1.3s ease-in-out infinite; }
+.hero-actor[data-pose="wave"] .ginga-art .hero-head { animation:ginga-nod 1.3s ease-in-out both; }
+.hero-actor[data-pose="eat"] .ginga-art .hero-left-arm { animation:ginga-eat-upper 1.4s ease-in-out infinite; }
+.hero-actor[data-pose="eat"] .ginga-art .ginga-left-forearm { animation:ginga-eat-hand 1.4s ease-in-out infinite; }
+.hero-actor[data-pose="eat"] .ginga-art .hero-head { animation:ginga-nod .7s ease-in-out infinite; }
+.hero-actor[data-pose="train"] .ginga-art .hero-rig { animation:ginga-training 1.15s ease-in-out infinite; }
+.hero-actor[data-pose="train"] .ginga-art .hero-left-arm { animation:ginga-box-left 1.15s ease-in-out infinite; }
+.hero-actor[data-pose="train"] .ginga-art .hero-right-arm { animation:ginga-box-right 1.15s ease-in-out infinite; }
+.hero-actor[data-pose="train"] .ginga-art .ginga-left-forearm { transform:rotate(65deg); }
+.hero-actor[data-pose="train"] .ginga-art .ginga-right-forearm { transform:rotate(-65deg); }
+.hero-actor[data-pose="train"] .ginga-art .hero-left-leg { animation:ginga-step 1.15s ease-in-out infinite; }
+.hero-actor[data-pose="train"] .ginga-art .hero-right-leg { animation:ginga-step 1.15s ease-in-out infinite reverse; }
+.hero-actor[data-pose="sleep"] .ginga-art .hero-rig { animation:ginga-rest 4s ease-in-out infinite; }
+.hero-actor[data-pose="sleep"] .ginga-art .hero-head { transform:none; }
+.hero-actor[data-pose="transform"] .ginga-art .hero-left-arm { animation:ginga-rise-left 1.65s ease-in-out both; }
+.hero-actor[data-pose="transform"] .ginga-art .hero-right-arm { animation:ginga-rise-right 1.65s ease-in-out both; }
+.hero-actor[data-pose="punch"] .ginga-art .hero-right-arm { animation:ginga-punch .65s ease-in-out both; }
+.hero-actor[data-pose="punch"] .ginga-art .hero-left-arm { animation:none; transform:rotate(-12deg); }
+.hero-actor[data-pose="punch"] .ginga-art .ginga-left-forearm { transform:rotate(74deg); }
+.hero-actor[data-pose="beam"] .ginga-art .hero-beam-flare { opacity:1; animation:beam-flash .2s ease-in-out infinite alternate; }
+.hero-actor[data-pose="beam"] .ginga-art .hero-rig { animation:ginga-beam-recoil 1.15s ease-out both; }
+.hero-actor[data-pose="defend"] .ginga-art .hero-defense-arms { transform-box:view-box; transform-origin:201px 310px; animation:ginga-cross-guard .28s ease-out both; }
+.hero-actor[data-pose="defend"] .ginga-art .hero-rig { animation:ginga-guard .3s ease-out both; }
+.hero-actor[data-pose="victory"] .ginga-art .hero-right-arm { animation:ginga-victory-arm 1.15s ease-in-out infinite; }
+.hero-actor[data-pose="victory"] .ginga-art .ginga-right-forearm { transform:rotate(-70deg); }
+.hero-actor[data-pose="victory"] .ginga-art .hero-left-arm { animation:none; transform:rotate(12deg); }
+.hero-actor[data-pose="victory"] .ginga-art .hero-rig { animation:ginga-victory 1.15s ease-in-out infinite; }
+.hero-actor[data-pose="charge"] .ginga-art .hero-left-arm { transform:rotate(17deg); }
+.hero-actor[data-pose="charge"] .ginga-art .hero-right-arm { transform:rotate(-17deg); }
+.hero-actor[data-pose="charge"] .ginga-art .ginga-left-forearm { transform:rotate(28deg); }
+.hero-actor[data-pose="charge"] .ginga-art .ginga-right-forearm { transform:rotate(-28deg); }
+#petHero[data-pose="salute"] .ginga-art .hero-right-arm { animation:ginga-salute 2.4s ease-in-out both; }
+#petHero[data-pose="salute"] .ginga-art .ginga-right-forearm { animation:ginga-salute-hand 2.4s ease-in-out both; }
+#petHero[data-pose="salute"] .ginga-art .hero-left-arm { transform:none; }
+#petHero[data-pose="salute"] .ginga-art .hero-head,
+#petHero[data-pose="nod"] .ginga-art .hero-head { animation:ginga-nod 1.35s ease-in-out both; }
+#petHero[data-pose="nod"] .ginga-art .hero-right-arm { animation:ginga-friendly-arm 1.35s ease-in-out both; }
+#petHero[data-pose="levelup"] .ginga-art .hero-left-arm { animation:ginga-rise-left 3.2s ease-in-out both; }
+#petHero[data-pose="levelup"] .ginga-art .hero-right-arm { animation:ginga-rise-right 3.2s ease-in-out both; }
+#petHero[data-pose="levelup"] .ginga-art .ginga-left-forearm { animation:ginga-rise-left-hand 3.2s ease-in-out both; }
+#petHero[data-pose="levelup"] .ginga-art .ginga-right-forearm { animation:ginga-rise-right-hand 3.2s ease-in-out both; }
+@keyframes ginga-breathe { 0%,100% { transform:translateY(0) scaleY(1); } 50% { transform:translateY(-1px) scaleY(1.004); } }
+@keyframes ginga-crystal { 0%,100% { opacity:.08; } 50% { opacity:.28; } }
+@keyframes ginga-wave-upper { 0%,100% { transform:rotate(-52deg); } 50% { transform:rotate(-58deg); } }
+@keyframes ginga-wave-hand { 0%,100% { transform:rotate(-95deg); } 25%,75% { transform:rotate(-112deg); } 50% { transform:rotate(-85deg); } }
+@keyframes ginga-nod { 0%,100% { transform:none; } 45% { transform:translateY(3px) rotate(-2deg); } }
+@keyframes ginga-eat-upper { 0%,100% { transform:rotate(-8deg); } 35%,70% { transform:rotate(-20deg); } }
+@keyframes ginga-eat-hand { 0%,100% { transform:rotate(15deg); } 35%,70% { transform:rotate(148deg); } }
+@keyframes ginga-training { 0%,50%,100% { transform:translateY(0); } 25%,75% { transform:translateY(-3px); } }
+@keyframes ginga-box-left { 0%,100% { transform:rotate(-15deg); } 25% { transform:rotate(-55deg); } 50%,75% { transform:rotate(5deg); } }
+@keyframes ginga-box-right { 0%,25%,100% { transform:rotate(-10deg); } 50% { transform:rotate(-75deg); } 75% { transform:rotate(8deg); } }
+@keyframes ginga-step { 0%,50%,100% { transform:none; } 25% { transform:rotate(2deg) translateY(-3px); } 75% { transform:rotate(-2deg); } }
+@keyframes ginga-rest { 0%,100% { transform:translateY(4px) rotate(-3deg) scaleY(.985); } 50% { transform:translateY(2px) rotate(-3deg) scaleY(.995); } }
+@keyframes ginga-rise-left { 0%,100% { transform:none; } 25%,76% { transform:rotate(53deg); } }
+@keyframes ginga-rise-right { 0%,100% { transform:none; } 25%,76% { transform:rotate(-53deg); } }
+@keyframes ginga-rise-left-hand { 0%,100% { transform:none; } 25%,76% { transform:rotate(58deg); } }
+@keyframes ginga-rise-right-hand { 0%,100% { transform:none; } 25%,76% { transform:rotate(-58deg); } }
+@keyframes ginga-punch { 0%,100% { transform:none; } 20% { transform:rotate(12deg); } 42%,58% { transform:rotate(-94deg); } }
+@keyframes ginga-beam-recoil { 0%,100% { transform:none; } 20%,60% { transform:translateX(-5px) rotate(-1deg); } 40%,80% { transform:translateX(-3px) rotate(-1deg); } }
+@keyframes ginga-cross-guard { from { transform:translateY(8px); opacity:.3; } to { transform:none; opacity:1; } }
+@keyframes ginga-guard { from { transform:none; } to { transform:translateY(2px) scaleY(.995); } }
+@keyframes ginga-victory-arm { 0%,100% { transform:rotate(-48deg); } 35% { transform:rotate(-60deg); } }
+@keyframes ginga-victory { 0%,100% { transform:none; } 35% { transform:translateY(-5px); } 70% { transform:translateY(-1px); } }
+@keyframes ginga-salute { 0%,100% { transform:none; } 22%,77% { transform:rotate(-74deg); } }
+@keyframes ginga-salute-hand { 0%,100% { transform:none; } 22%,77% { transform:rotate(-159deg); } }
+@keyframes ginga-friendly-arm { 0%,100% { transform:none; } 35%,65% { transform:rotate(-12deg); } }
+@media (prefers-reduced-motion:reduce) {
+  .ginga-art * { animation:none !important; }
+  .hero-actor[data-pose="wave"] .ginga-art .hero-right-arm,
+  .hero-actor[data-pose="victory"] .ginga-art .hero-right-arm { animation:none !important; transform:rotate(-52deg); }
+  .hero-actor[data-pose="wave"] .ginga-art .ginga-right-forearm,
+  .hero-actor[data-pose="victory"] .ginga-art .ginga-right-forearm { animation:none !important; transform:rotate(-95deg); }
+  #petHero[data-pose="salute"] .ginga-art .hero-right-arm { animation:none !important; transform:rotate(-74deg); }
+  #petHero[data-pose="salute"] .ginga-art .ginga-right-forearm { animation:none !important; transform:rotate(-159deg); }
+  #petHero[data-pose="levelup"] .ginga-art .hero-left-arm { transform:rotate(40deg); }
+  #petHero[data-pose="levelup"] .ginga-art .hero-right-arm { transform:rotate(-40deg); }
+  #petHero[data-pose="levelup"] .ginga-art .ginga-left-forearm { transform:rotate(48deg); }
+  #petHero[data-pose="levelup"] .ginga-art .ginga-right-forearm { transform:rotate(-48deg); }
+  .hero-actor[data-pose="punch"] .ginga-art .hero-right-arm { transform:rotate(-94deg); }
+  .hero-actor[data-pose="beam"] .ginga-art .hero-beam-flare { opacity:.85; }
+}
