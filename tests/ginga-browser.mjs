@@ -206,9 +206,6 @@ async function trioLayouts(browser, name) {
       });
       await page.waitForFunction(() => document.querySelector('.second-ally-beam').classList.contains('active'));
       await page.waitForTimeout(160);
-      // Photograph the live scene before pausing; the native pause overlay
-      // deliberately covers the fighters and is not useful for art review.
-      await page.screenshot({ path: new URL(`${name}-${viewport.name}-triple-beam.png`, output).pathname });
       // Freeze this render-harness frame through the public pause API before
       // measuring CSS/SVG geometry. WebKit can sample the animated wrist and
       // the preceding ray layout one compositor frame apart while moving.
@@ -242,6 +239,9 @@ async function trioLayouts(browser, name) {
         assert.ok(ray.targetError < 2, `${name}/${viewport.name}: ${ray.hero} beam converges on the monster (${ray.targetError}px)`);
       }
       assert.deepEqual(await armVisibility(page, '.battle-arena > .hero-actor'), { neutral: false, defense: false, beam: true });
+      // This is a frozen art-review frame. Hide only the pause sheet during
+      // capture so the source images and poses remain visible for inspection.
+      await page.screenshot({ path: new URL(`${name}-${viewport.name}-triple-beam.png`, output).pathname, style: '.pause-overlay { visibility:hidden !important; }' });
       await page.evaluate(() => window.gingaBattle.close());
       values.push({ ...viewport, hero, controls, rays, healing, headClearance });
     }
